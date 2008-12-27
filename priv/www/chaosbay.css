@@ -1,0 +1,37 @@
+body {
+    background: white;
+    color: black;
+}
+
+div#head {
+    background: black;
+    color: white;
+    padding: 0.5em 1em;
+}
+div#head p {
+    margin: 0;
+    float: right;
+    text-align: right;
+    background: black;
+}
+div#head p a {
+    color: white;
+}
+div#head h1 {
+    font-size: large;
+    font-weight: bold;
+    margin-right: 5em;
+}
+
+div#content {
+    margin: 1em auto;
+}
+
+div#content table {
+    border-collapse: collapse;
+    border: 1px solid #ccc;
+}
+div#content table th th,
+div#content table th td {
+    border: 1px solid #ccc;
+}
