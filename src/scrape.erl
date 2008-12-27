@@ -55,7 +55,7 @@ scrape(ScrapeURL, Id) ->
 			mnesia:write(S2),
 			{wait, Result};
 		    [#scrape{result = Result}] ->
-			{ok, Result}
+			Result
 		end
 	end,
     case mnesia:transaction(F) of
@@ -78,8 +78,12 @@ spawn_worker(ScrapeURL, Id) ->
 
 worker(ScrapeURL, Id) ->
     Result = case (catch do_scrape(ScrapeURL, Id)) of
-		 {'EXIT', Reason} -> Reason;
-		 R -> R
+		 {'EXIT', Reason} ->
+		     error_logger:error_msg("Scrape failed: ~p~n", [Reason]),
+		     Reason;
+		 R ->
+		     error_logger:info_msg("Scraped: ~p~n", [R]),
+		     R
 	     end,
     F = fun() ->
 		[#scrape{waiters = Waiters} = S] =
@@ -101,7 +105,10 @@ do_scrape(ScrapeURL, Id) ->
     {ok, {{_, 200, _}, _Attrs, Body}} = http:request(URL),
     Scraped = benc:parse(list_to_binary(Body)),
     {value, {_, Files, _}} = lists:keysearch(<<"files">>, 1, Scraped),
-    {value, {_, Info, _}} = lists:keysearch(Id, 1, Files),
-    {value, {_, Seeders, _}} = lists:keysearch(<<"complete">>, 1, Info),
-    {value, {_, Leechers, _}} = lists:keysearch(<<"incomplete">>, 1, Info),
-    {ok, Seeders, Leechers}.
+    case lists:keysearch(Id, 1, Files) of
+	{value, {_, Info, _}} ->
+	    {value, {_, Seeders, _}} = lists:keysearch(<<"complete">>, 1, Info),
+	    {value, {_, Leechers, _}} = lists:keysearch(<<"incomplete">>, 1, Info),
+	    {ok, Seeders, Leechers};
+	false -> {ok, 0, 0}
+    end.

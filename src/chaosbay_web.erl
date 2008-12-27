@@ -53,15 +53,7 @@ request(Req, 'POST', "add") ->
 
 request(Req, 'GET', "") ->
     Torrents = torrent:recent(50),
-    TorrentsScraped = util:pmap(fun(#torrent{id = Id} = Torrent) ->
-					{S, L} = case scrape:scrape(Id) of
-						     {ok, S1, L1} ->
-							 {integer_to_list(S1),
-							  integer_to_list(L1)};
-						     _ -> {"?", "?"}
-						 end,
-					{Torrent, S, L}
-				end, Torrents),
+    TorrentsScraped = torrents_with_scrapes(Torrents),
     HTML =
 	{table, [{"border", "1"}],
 	 [{tr, [{th, ["Name"]},
@@ -73,16 +65,17 @@ request(Req, 'GET', "") ->
 	       ]}
 	  | lists:map(fun({#torrent{name = Name,
 				    length = Length,
-				    date = Date}, S, L}) ->
+				    date = Date}, S, L, Class}) ->
 			      Link = "/" ++ mochiweb_util:quote_plus(binary_to_list(Name)) ++ ".torrent",
-			      {tr, [{td, [Name]},
-				    {td, [{a, [{"href", Link}],
-					   ["Get"]}]},
-				    {td, [util:human_length(Length)]},
-				    {td, [util:human_duration(util:mk_timestamp() - Date)]},
-				    {td, [S]},
-				    {td, [L]}
-				   ]}
+			      {tr, [{"class", Class}],
+			       [{td, [Name]},
+				{td, [{a, [{"href", Link}],
+				       ["Get"]}]},
+				{td, [util:human_length(Length)]},
+				{td, [util:human_duration(util:mk_timestamp() - Date)]},
+				{td, [S]},
+				{td, [L]}
+			       ]}
 		      end, TorrentsScraped)]},
     Body = html:to_iolist(HTML),
     html_ok(Req, Body);
@@ -128,3 +121,23 @@ html_ok(Req, Body) ->
     </div>
   </body>
 </html>">>]}).
+
+torrents_with_scrapes(Torrents) ->
+    util:pmap(
+      fun(#torrent{id = Id} = Torrent) ->
+	      {S, L, Class} = case scrape:scrape(Id) of
+				  {ok, 0, 0} ->
+				      {"0", "0", "dead"};
+				  {ok, 0, L1} ->
+				      {"0",
+				       integer_to_list(L1),
+				       "starving"};
+				  {ok, S1, L1} ->
+				      {integer_to_list(S1),
+				       integer_to_list(L1),
+				       ""};
+				  _ ->
+				      {"?", "?", "dead"}
+			      end,
+	      {Torrent, S, L, Class}
+      end, Torrents).

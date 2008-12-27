@@ -24,14 +24,21 @@ div#head h1 {
 }
 
 div#content {
-    margin: 1em auto;
 }
 
 div#content table {
+    margin: 1em auto;
     border-collapse: collapse;
     border: 1px solid #ccc;
 }
-div#content table th th,
-div#content table th td {
-    border: 1px solid #ccc;
+div#content table tr th {
+    background: #ccc;
+}
+div#content table tr td {
+}
+div#content table tr.dead td {
+    background: #ccc;
+}
+div#content table tr.starving td {
+    background: #fcc;
 }
