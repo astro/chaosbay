@@ -48,8 +48,20 @@ request(Req, 'GET', "add") ->
 request(Req, 'POST', "add") ->
     Multipart = mochiweb_multipart:parse_form(Req),
     {FileName, {_FileType, _}, File} = proplists:get_value("file", Multipart),
-    ok = torrent:add(FileName, File),
-    html_ok(Req, "Ok");
+    case torrent:add(FileName, File) of
+	{ok, Name} ->
+	    html_ok(Req, [<<"
+<h2>Very good!</h2>
+<p>Now please download our .torrent file and seed that!</p>
+<p>→ <a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
+">>]);
+	exists ->
+	    html_ok(Req, <<"
+<h2>Sorry</h2>
+<p>But I already have this file.</p>
+<p class='note'>You might want to rename it.</p>
+">>)
+    end;
 
 request(Req, 'GET', "") ->
     Torrents = torrent:recent(50),
@@ -66,7 +78,7 @@ request(Req, 'GET', "") ->
 	  | lists:map(fun({#torrent{name = Name,
 				    length = Length,
 				    date = Date}, S, L, Class}) ->
-			      Link = "/" ++ mochiweb_util:quote_plus(binary_to_list(Name)) ++ ".torrent",
+			      Link = link_to_torrent(Name),
 			      {tr, [{"class", Class}],
 			       [{td, [Name]},
 				{td, [{a, [{"href", Link}],
@@ -121,6 +133,11 @@ html_ok(Req, Body) ->
     </div>
   </body>
 </html>">>]}).
+
+link_to_torrent(Name) when is_binary(Name) ->
+    link_to_torrent(binary_to_list(Name));
+link_to_torrent(Name) ->
+"/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
 
 torrents_with_scrapes(Torrents) ->
     util:pmap(

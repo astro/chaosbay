@@ -34,7 +34,7 @@ add(Filename, Upload) ->
 		case mnesia:read({torrent, NewFilename}) of
 		    [] ->
 			mnesia:write(Torrent),
-			ok;
+			{ok, NewFilename};
 		    _ ->
 			exists
 		end
