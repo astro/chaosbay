@@ -46,7 +46,7 @@ add_trackers1(Torrent, [URL1 | _] = URLs) ->
     Trackers1 =
 	case lists:keysearch(<<"announce-list">>, 1, Torrent) of
 	    {value, {_, L, _}} ->
-		lists:flatten(L);
+		L;
 	    _ -> []
 	end,
     Trackers = [[URL] || URL <- URLs] ++
