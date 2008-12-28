@@ -37,7 +37,7 @@ div#content p, div#content form {
 }
 h2, h3 {
     margin: 2em 0 1em;
-    color: #666;
+    color: #999;
 }
 div#content .important {
     border: 1px solid #774;
@@ -49,12 +49,15 @@ div#content .important {
 div#content table {
     margin: 1em auto;
     border-collapse: collapse;
-    border: 1px solid #ccc;
+    border: 1px solid #aaa;
 }
 div#content table tr th {
+    padding: 0.4em 0.5em;
+    text-align: left;
     background: #ccc;
 }
 div#content table tr td {
+    padding: 0.3em 0.5em;
 }
 div#content table tr.dead td {
     background: #ccc;

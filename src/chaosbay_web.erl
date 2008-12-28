@@ -56,7 +56,10 @@ It's kinda stupid without any seeders.
 </p>
 <h3>How do I create a .torrent file?</h3>
 <p>
-
+  If your favourite client can't there's always the
+  <a href='http://www.bittorrent.com/'>original BitTorrent client</a>,
+  <a href='http://claudiusmaximus.goto10.org/index.php?page=coding/buildtorrent'>buildtorrent</a>
+  or <a href='http://btfaq.com/serve/cache/14.html'>many others.</a>
 </p>
 ">>,
     html_ok(Req, Body);
@@ -69,13 +72,14 @@ request(Req, 'POST', "add") ->
 	    html_ok(Req, [<<"
 <h2>Very good!</h2>
 <p>Now please download our .torrent file and seed that!</p>
-<p>→ <a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
+<p class='important'>→ <a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
+<p>Then, go back to the <a href='/'>index</a> or <a href='/add'>add</a> another Torrent.</p>
 ">>]);
 	exists ->
 	    html_ok(Req, <<"
 <h2>Sorry</h2>
-<p>But I already have this file.</p>
-<p class='note'>You might want to rename it.</p>
+<p class='important'>I already have this file.</p>
+<p>You might want to rename it if the contents are really different.</p>
 ">>)
     end;
 
@@ -86,8 +90,8 @@ request(Req, 'GET', "") ->
 	{table, [{"border", "1"}],
 	 [{tr, [{th, ["Name"]},
 		{th, [""]},
-		{th, ["Added"]},
 		{th, ["Size"]},
+		{th, ["Added"]},
 		{th, ["S"]},
 		{th, ["L"]}
 	       ]}
