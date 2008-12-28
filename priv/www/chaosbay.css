@@ -8,7 +8,7 @@ body {
 div#head {
     background: black;
     color: white;
-    padding: 0.5em 1em;
+    padding: 0.2em 2em;
 }
 div#head p {
     margin: 0;
@@ -20,7 +20,7 @@ div#head p a {
     color: white;
 }
 div#head h1 {
-    font-size: large;
+    font-size: x-large;
     font-weight: bold;
     margin-right: 5em;
 }
@@ -54,14 +54,25 @@ div#content table {
 }
 div#content table tr th {
     padding: 0.4em 0.5em;
-    text-align: left;
+    text-align: right;
     background: #ccc;
+}
+div#content table tr th:first-child {
+    text-align: left;
 }
 div#content table tr td {
     padding: 0.3em 0.5em;
+    text-align: right;
 }
 div#content table tr td:first-child {
+    text-align: left;
     font-family: monospace;
+}
+div#content table tr td a.download:before {
+    content: url("/static/document-save.png");
+}
+div#content table tr td a.download {
+    font-size: 0;
 }
 div#content table tr.dead td {
     background: #ccc;
