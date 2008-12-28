@@ -38,10 +38,26 @@ loop(Req) ->
 
 request(Req, 'GET', "add") ->
     Body = <<"
-<form action='/add' method='POST' enctype='multipart/form-data'>
-<input type='file' name='file'/>
-<input type='submit' value='Add'/>
+<h2>Add a .torrent file</h2>
+<form action='/add' method='POST' enctype='multipart/form-data' class='important'>
+  <input type='file' name='file' accept='application/x-bittorrent' maxlength='524288'/>
+  <input type='submit' value='Add'/>
 </form>
+<h3>Tracker information will be added automatically!</h2>
+<p class='note'>
+I <b>prepend</b> our own tracker in your file. That enables me
+to get numbers of Seeders &amp; Leechers faster. If you still
+need a tracker, use:
+</p>
+<pre>http://chaosbay.congress.ccc.de:6969/announce</pre>
+<h3>Please leech the files first.</h3>
+<p class='note'>
+It's kinda stupid without any seeders.
+</p>
+<h3>How do I create a .torrent file?</h3>
+<p>
+
+</p>
 ">>,
     html_ok(Req, Body);
 

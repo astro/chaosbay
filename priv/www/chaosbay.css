@@ -1,4 +1,6 @@
 body {
+    padding: 0;
+    margin: 0;
     background: white;
     color: black;
 }
@@ -24,8 +26,26 @@ div#head h1 {
 }
 
 div#content {
+    margin: 0 auto;
+    max-width: 45em;
+    color: #333;
 }
-
+div#content * {
+}
+div#content p, div#content form {
+    margin: 0 0 1em;
+}
+h2, h3 {
+    margin: 2em 0 1em;
+    color: #666;
+}
+div#content .important {
+    border: 1px solid #774;
+    background: #ffc;
+    -moz-border-radius: 1em;
+    padding: 2em 1em;
+    text-align: center;
+}
 div#content table {
     margin: 1em auto;
     border-collapse: collapse;
