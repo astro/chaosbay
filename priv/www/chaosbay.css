@@ -31,8 +31,10 @@ div#content {
     color: #333;
 }
 div#content * {
+    max-width: 44em;
 }
-div#content p, div#content form {
+div#content p,
+div#content form {
     margin: 0 0 1em;
 }
 h2, h3 {
@@ -47,8 +49,8 @@ div#content .important {
     text-align: center;
 }
 div#content table {
+    margin: 1em 0;
     font-size: small;
-    margin: 1em auto;
     border-collapse: collapse;
     border: 1px solid #aaa;
 }
@@ -67,6 +69,7 @@ div#content table tr td {
 div#content table tr td:first-child {
     text-align: left;
     font-family: monospace;
+    overflow: hidden;
 }
 div#content table tr td a.download:before {
     content: url("/static/document-save.png");
