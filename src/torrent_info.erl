@@ -30,7 +30,9 @@ get_length(Torrent) ->
 	    end
     end.
 
--define(TRACKER_URLS, [<<"http://localhost:6969/announce">>]).
+-define(TRACKER_URLS, [<<"http://81.163.2.20:6969/announce">>,
+		       <<"http://81.163.2.24:6969/announce">>,
+		       <<"http://81.163.2.23:6969/announce">>]).
 
 add_trackers(Torrent) ->
     add_trackers1(Torrent, ?TRACKER_URLS).

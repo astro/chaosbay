@@ -5,8 +5,10 @@
 
 -define(TTL, 10).
 -define(TIMEOUT, 2).
--define(SCRAPE_URLs, ["http://localhost:6969/scrape",
-		      "http://127.0.0.1:6969/scrape"]).
+-define(SCRAPE_URLs, ["http://81.163.2.20:6969/scrape",
+		      "http://81.163.2.24:6969/scrape",
+		      "http://81.163.2.23:6969/scrape"
+		     ]).
 -record(scrape, {url_id, worker, last_try = 0, last_reply = 0, result, waiters = []}).
 
 init() ->
