@@ -47,6 +47,7 @@ div#content .important {
     text-align: center;
 }
 div#content table {
+    font-size: small;
     margin: 1em auto;
     border-collapse: collapse;
     border: 1px solid #aaa;
@@ -58,6 +59,9 @@ div#content table tr th {
 }
 div#content table tr td {
     padding: 0.3em 0.5em;
+}
+div#content table tr td:first-child {
+    font-family: monospace;
 }
 div#content table tr.dead td {
     background: #ccc;
