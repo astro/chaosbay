@@ -93,6 +93,8 @@ request(Req, 'GET', "") ->
 		{th, [""]},
 		{th, ["Size"]},
 		{th, ["Age"]},
+		{th, [{"title", "Comments"}],
+		 ["C"]},
 		{th, [{"title", "Seeders"}],
 		 ["S"]},
 		{th, [{"title", "Leechers"}],
@@ -100,7 +102,7 @@ request(Req, 'GET', "") ->
 	       ]}
 	  | lists:map(fun({#torrent{name = Name,
 				    length = Length,
-				    date = Date}, S, L, Class}) ->
+				    date = Date}, S, L, Class, C}) ->
 			      LinkDetails = link_to_details(Name),
 			      LinkTorrent = link_to_torrent(Name),
 			      {tr, [{"class", Class}],
@@ -111,6 +113,11 @@ request(Req, 'GET', "") ->
 				       ["Get"]}]},
 				{td, [util:human_length(Length)]},
 				{td, [util:human_duration(util:mk_timestamp() - Date)]},
+				{td, [{"style", if
+						    C == "0" -> "color: #aaa";
+						    true -> "font-weight:bold"
+						end}],
+				 [C]},
 				{td, [S]},
 				{td, [L]}
 			       ]}
@@ -280,8 +287,17 @@ link_to_torrent(Name) ->
     "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
 
 torrents_with_scrapes(Torrents) ->
+    F = fun() ->
+		lists:map(
+		  fun(#torrent{name = Name} = Torrent) ->
+			  Comments = comment:get_comments(Name),
+			  {Torrent, length(Comments)}
+		  end, Torrents)
+	end,
+    {atomic, TorrentsWithComments} = mnesia:transaction(F),
     util:pmap(
-      fun(#torrent{id = Id} = Torrent) ->
+      fun({#torrent{id = Id} = Torrent, C}) ->
+	      CS = integer_to_list(C),
 	      {S, L, Class} = case scrape:scrape(Id) of
 				  {ok, 0, 0, _} ->
 				      {"0", "0", "dead"};
@@ -296,5 +312,5 @@ torrents_with_scrapes(Torrents) ->
 				  _ ->
 				      {"?", "?", "dead"}
 			      end,
-	      {Torrent, S, L, Class}
-      end, Torrents).
+	      {Torrent, S, L, Class, CS}
+      end, TorrentsWithComments).
