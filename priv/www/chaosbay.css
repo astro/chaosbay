@@ -84,3 +84,13 @@ div#content table tr.dead td {
 div#content table tr.starving td {
     background: #fcc;
 }
+
+p#foot {
+    font-size: xx-small;
+    text-align: center;
+    clear: both;
+    bottom: 0;
+}
+p#foot:first-line {
+    font-weight: bold;
+}

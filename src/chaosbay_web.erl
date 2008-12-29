@@ -154,6 +154,21 @@ html_ok(Req, Body) ->
     <div id='content'>
 ">>, Body, <<"
     </div>
+    <p id='foot'>
+— Powered by mochiweb &amp; opentracker —
+<br/>
+Running on ">>,
+	     case nodes(visible) of
+		 [] ->
+		     [];
+		 VisibleNodes ->
+		     [[atom_to_list(Node)
+		      || Node <- VisibleNodes],
+		      <<" and ">>]
+	     end,
+	     atom_to_list(node()),
+<<"
+    </p>
   </body>
 </html>">>]}).
 
