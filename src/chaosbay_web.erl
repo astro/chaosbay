@@ -84,7 +84,7 @@ request(Req, 'POST', "add") ->
     end;
 
 request(Req, 'GET', "") ->
-    Torrents = torrent:recent(50),
+    Torrents = torrent:recent(1000),
     TorrentsScraped = torrents_with_scrapes(Torrents),
     HTML =
 	{table, [{"border", "1"}],
