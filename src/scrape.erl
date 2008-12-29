@@ -35,34 +35,39 @@ scrape(ScrapeURL, Id) ->
     F = fun() ->
 		case mnesia:read({scrape, UrlId}) of
 		    [] ->
-			Pid = spawn_worker(ScrapeURL, Id),
-			mnesia:write(#scrape{worker = Pid,
+			mnesia:write(#scrape{worker = true,
 					     url_id = UrlId,
 					     last_try = Now,
 					     waiters = [I]}),
-			{wait, timeout};
+			{start_wait, timeout};
 		    [#scrape{last_reply = LastReply,
 			     worker = Worker,
 			     result = Result,
 			     waiters = Waiters} = S]
 		    when LastReply =< Now - ?TTL ->
-			S2 = if
-				 is_pid(Worker) ->
-				     S#scrape{waiters = [I | Waiters]};
-				 true ->
-				     Pid = spawn_worker(ScrapeURL, Id),
-				     S#scrape{worker = Pid,
-					      last_try = Now,
-					      waiters = [I | Waiters]}
-			     end,
-			mnesia:write(S2),
-			{wait, Result};
+			if
+			    Worker =:= true ->
+				mnesia:write(S#scrape{waiters = [I | Waiters]}),
+				{wait, Result};
+			    true ->
+				mnesia:write(S#scrape{worker = true,
+						      last_try = Now,
+						      waiters = [I | Waiters]}),
+				{start_wait, Result}
+			end;
 		    [#scrape{result = Result}] ->
 			Result
 		end
 	end,
     case mnesia:transaction(F) of
-	{atomic, {wait, Result}} ->
+	{atomic, {Do, Result}}
+	when Do =:= start_wait;
+	     Do =:= wait ->
+	    if
+		Do =:= start_wait ->
+		    spawn_worker(ScrapeURL, Id);
+		true -> already_started
+	    end,
 	    receive
 		{scraped, UrlId, NewResult} ->
 		    NewResult
@@ -75,9 +80,9 @@ scrape(ScrapeURL, Id) ->
     end.
 
 spawn_worker(ScrapeURL, Id) ->
-    spawn_link(fun() ->
-		       worker(ScrapeURL, Id)
-	       end).
+    spawn(fun() ->
+		  worker(ScrapeURL, Id)
+	  end).
 
 worker(ScrapeURL, Id) ->
     Result = case (catch do_scrape(ScrapeURL, Id)) of
@@ -91,7 +96,7 @@ worker(ScrapeURL, Id) ->
     F = fun() ->
 		[#scrape{waiters = Waiters} = S] =
 		    mnesia:read({scrape, {ScrapeURL, Id}}),
-		mnesia:write(S#scrape{worker = none,
+		mnesia:write(S#scrape{worker = false,
 				      waiters = [],
 				      result = Result,
 				      last_reply = util:mk_timestamp()}),
