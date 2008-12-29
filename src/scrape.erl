@@ -29,6 +29,7 @@ scrape(Id) ->
 		end, unknown, Scrapes).
 
 scrape(ScrapeURL, Id) ->
+    I = self(),
     Now = util:mk_timestamp(),
     UrlId = {ScrapeURL, Id},
     F = fun() ->
@@ -38,7 +39,7 @@ scrape(ScrapeURL, Id) ->
 			mnesia:write(#scrape{worker = Pid,
 					     url_id = UrlId,
 					     last_try = Now,
-					     waiters = [self()]}),
+					     waiters = [I]}),
 			{wait, timeout};
 		    [#scrape{last_reply = LastReply,
 			     worker = Worker,
@@ -47,12 +48,12 @@ scrape(ScrapeURL, Id) ->
 		    when LastReply =< Now - ?TTL ->
 			S2 = if
 				 is_pid(Worker) ->
-				     S#scrape{waiters = [self() | Waiters]};
+				     S#scrape{waiters = [I | Waiters]};
 				 true ->
 				     Pid = spawn_worker(ScrapeURL, Id),
 				     S#scrape{worker = Pid,
 					      last_try = Now,
-					      waiters = [self() | Waiters]}
+					      waiters = [I | Waiters]}
 			     end,
 			mnesia:write(S2),
 			{wait, Result};
@@ -63,8 +64,8 @@ scrape(ScrapeURL, Id) ->
     case mnesia:transaction(F) of
 	{atomic, {wait, Result}} ->
 	    receive
-		{scraped, UrlId, Result} ->
-		    Result
+		{scraped, UrlId, NewResult} ->
+		    NewResult
 	    after ?TIMEOUT * 1000 ->
 		    error_logger:error_msg("Waiting for ~p timed out~n", [UrlId]),
 		    Result
