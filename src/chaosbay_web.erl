@@ -117,7 +117,8 @@ request(Req, 'GET', "") ->
 		   
 request(Req, 'GET', "static/" ++ Path) ->
     DocRoot = chaosbay_deps:local_path(["priv", "www"]),
-    Req:serve_file(Path, DocRoot);
+    Req:serve_file(Path, DocRoot, [{"Cache-Control", "max-age=7200"},
+				   {"Expires", "Thu, 30 Oct 2008 23:42:59 GMT"}]);
 
 request(Req, 'GET', Path) ->
     PathLen = string:len(Path),
