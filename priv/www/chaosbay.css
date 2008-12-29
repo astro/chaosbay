@@ -80,7 +80,7 @@ div#content table tr td a.download {
     font-size: 0;
 }
 div#content table tr.dead td {
-    background: #eee;
+    background: #ddd;
 }
 div#content table tr.starving td {
     background: #fcc;
