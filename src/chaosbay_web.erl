@@ -173,7 +173,6 @@ request(Req, 'GET', {details, Name}) ->
 			       {td, [util:human_length(FileLength)]}]}
 			 || {FileName, FileLength} <- torrent_info:get_files(Torrent)]]}
 		    ],
-	    io:format("HTML: ~p~n",[HTML]),
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
 	not_found ->
