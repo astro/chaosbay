@@ -30,9 +30,13 @@ get_length(Torrent) ->
 	    end
     end.
 
--define(TRACKER_URLS, [<<"http://81.163.2.20:6969/announce">>,
+-define(TRACKER_URLS, [<<"udp://81.163.2.20:6969/announce">>,
+		       <<"udp://81.163.2.24:6969/announce">>,
+		       <<"udp://81.163.2.23:6969/announce">>,
+		       <<"http://81.163.2.20:6969/announce">>,
 		       <<"http://81.163.2.24:6969/announce">>,
-		       <<"http://81.163.2.23:6969/announce">>]).
+		       <<"http://81.163.2.23:6969/announce">>,
+		       <<"dht://">>]).
 
 add_trackers(Torrent) ->
     add_trackers1(Torrent, ?TRACKER_URLS).
@@ -49,8 +53,10 @@ add_trackers1(Torrent, [URL1 | _] = URLs) ->
 		L;
 	    _ -> []
 	end,
+    %%io:format("Old annonuces: ~p~n", [[[Tracker1] | Trackers1]]),
     Trackers = [[URL] || URL <- URLs] ++
 	[[Tracker1] | Trackers1],
+    %%io:format("New annonuces: ~p~n", [Trackers]),
     Torrent2 = lists:keystore(<<"announce">>, 1, Torrent,
 			      {<<"announce">>, URL1, <<0>>}),
     Torrent3 = lists:keystore(<<"announce-list">>, 1, Torrent2,
