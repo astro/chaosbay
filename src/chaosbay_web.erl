@@ -91,9 +91,11 @@ request(Req, 'GET', "") ->
 	 [{tr, [{th, ["Name"]},
 		{th, [""]},
 		{th, ["Size"]},
-		{th, ["Added"]},
-		{th, ["S"]},
-		{th, ["L"]}
+		{th, ["Age"]},
+		{th, [{"title", "Seeders"}],
+		 ["S"]},
+		{th, [{"title", "Leechers"}],
+		 ["L"]}
 	       ]}
 	  | lists:map(fun({#torrent{name = Name,
 				    length = Length,
