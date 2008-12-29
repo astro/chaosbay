@@ -1,6 +1,6 @@
 -module(torrent_info).
 
--export([info_hash/1, get_length/1, get_files/1, add_trackers/1]).
+-export([info_hash/1, get_length/1, get_files/1, add_trackers/1, get_trackers/1]).
 
 info_hash(Torrent) ->
     {value, {_, _, <<Hash/binary>>}} = lists:keysearch(<<"info">>, 1, Torrent),
@@ -41,6 +41,20 @@ get_files(Torrent) ->
 	    end
     end.
 
+get_trackers(Torrent) ->
+    Tracker =
+	case lists:keysearch(<<"announce">>, 1, Torrent) of
+	    {value, {_, A, _}} -> A;
+	    _ -> ""
+	end,
+    Trackers =
+	case lists:keysearch(<<"announce-list">>, 1, Torrent) of
+	    {value, {_, L, _}} ->
+		L;
+	    _ -> []
+	end,
+    [Tracker | lists:append(Trackers)].
+
 -define(TRACKER_URLS, [<<"udp://81.163.2.20:6969/announce">>,
 		       <<"udp://81.163.2.24:6969/announce">>,
 		       <<"udp://81.163.2.23:6969/announce">>,
@@ -65,8 +79,7 @@ add_trackers1(Torrent, [URL1 | _] = URLs) ->
 	    _ -> []
 	end,
     %%io:format("Old annonuces: ~p~n", [[[Tracker1] | Trackers1]]),
-    Trackers = [[URL] || URL <- URLs] ++
-	[[Tracker1] | Trackers1],
+    Trackers = [URLs, [Tracker1] | Trackers1],
     %%io:format("New annonuces: ~p~n", [Trackers]),
     Torrent2 = lists:keystore(<<"announce">>, 1, Torrent,
 			      {<<"announce">>, URL1, <<0>>}),

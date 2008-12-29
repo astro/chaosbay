@@ -39,7 +39,7 @@ div#content dl {
     margin: 0 0 1em;
 }
 h2, h3 {
-    margin: 2em 0 1em;
+    margin: 2em 0 0.1em;
     color: #999;
 }
 div#content .important {
@@ -96,7 +96,7 @@ div#content dl dt:after {
 div#content dl dd {
     font-size: small;
 }
-div#content dl dd.hash {
+.code {
     font-size: x-small;
     font-family: monospace;
 }

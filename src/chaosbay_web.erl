@@ -152,7 +152,7 @@ request(Req, 'GET', {details, Name}) ->
 		    {dl, [{dt, ["Size"]},
 			  {dd, [util:human_length(Length)]},
 			  {dt, ["Info-Hash"]},
-			  {dd, [{"class", "hash"}],
+			  {dd, [{"class", "code"}],
 			   [mochiweb_util:quote_plus(binary_to_list(Id))]},
 			  {dt, ["Seeders"]},
 			  {dd, [S]},
@@ -171,7 +171,12 @@ request(Req, 'GET', {details, Name}) ->
 			    {th, ["Size"]}]}
 		      | [{tr, [{td, [FileName]},
 			       {td, [util:human_length(FileLength)]}]}
-			 || {FileName, FileLength} <- torrent_info:get_files(Torrent)]]}
+			 || {FileName, FileLength} <- torrent_info:get_files(Torrent)]]},
+		    {h2, ["Trackers"]},
+		    {ul,
+		     [{li, [{"class", "code"}],
+		       [Tracker]}
+		      || Tracker <- torrent_info:get_trackers(Torrent)]}
 		    ],
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
