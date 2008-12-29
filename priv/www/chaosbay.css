@@ -57,7 +57,8 @@ div#content table {
 div#content table tr th {
     padding: 0.4em 0.5em;
     text-align: right;
-    background: #ccc;
+    color: white;
+    background: black;
 }
 div#content table tr th:first-child {
     text-align: left;
@@ -79,7 +80,7 @@ div#content table tr td a.download {
     font-size: 0;
 }
 div#content table tr.dead td {
-    background: #ccc;
+    background: #eee;
 }
 div#content table tr.starving td {
     background: #fcc;
