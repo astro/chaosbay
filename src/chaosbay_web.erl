@@ -88,41 +88,42 @@ request(Req, 'GET', "") ->
     Torrents = torrent:recent(1000),
     TorrentsScraped = torrents_with_scrapes(Torrents),
     HTML =
-	{table, [{"border", "1"}],
-	 [{tr, [{th, ["Name"]},
-		{th, [""]},
-		{th, ["Size"]},
-		{th, ["Age"]},
-		{th, [{"title", "Comments"}],
-		 ["C"]},
-		{th, [{"title", "Seeders"}],
-		 ["S"]},
-		{th, [{"title", "Leechers"}],
-		 ["L"]}
-	       ]}
-	  | lists:map(fun({#torrent{name = Name,
-				    length = Length,
-				    date = Date}, S, L, Class, C}) ->
-			      LinkDetails = link_to_details(Name),
-			      LinkTorrent = link_to_torrent(Name),
-			      {tr, [{"class", Class}],
-			       [{td, [{a, [{"href", LinkDetails}],
-				       [Name]}]},
-				{td, [{a, [{"href", LinkTorrent},
-					   {"class", "download"}],
-				       ["Get"]}]},
-				{td, [util:human_length(Length)]},
-				{td, [util:human_duration(util:mk_timestamp() - Date)]},
-				{td, [{"style", if
-						    C == "0" -> "color: #aaa";
-						    true -> "font-weight:bold"
-						end}],
-				 [C]},
-				{td, [S]},
-				{td, [L]}
-			       ]}
-		      end, TorrentsScraped)]},
-    Body = html:to_iolist(HTML),
+	[{img, [{"src", "/static/chaosbay.png"}], []},
+	 {table, [{"border", "1"}],
+	  [{tr, [{th, ["Name"]},
+		 {th, [""]},
+		 {th, ["Size"]},
+		 {th, ["Age"]},
+		 {th, [{"title", "Comments"}],
+		  ["C"]},
+		 {th, [{"title", "Seeders"}],
+		  ["S"]},
+		 {th, [{"title", "Leechers"}],
+		  ["L"]}
+		]}
+	   | lists:map(fun({#torrent{name = Name,
+				     length = Length,
+				     date = Date}, S, L, Class, C}) ->
+			       LinkDetails = link_to_details(Name),
+			       LinkTorrent = link_to_torrent(Name),
+			       {tr, [{"class", Class}],
+				[{td, [{a, [{"href", LinkDetails}],
+					[Name]}]},
+				 {td, [{a, [{"href", LinkTorrent},
+					    {"class", "download"}],
+					["Get"]}]},
+				 {td, [util:human_length(Length)]},
+				 {td, [util:human_duration(util:mk_timestamp() - Date)]},
+				 {td, [{"style", if
+						     C == "0" -> "color: #aaa";
+						     true -> "font-weight:bold"
+						 end}],
+				  [C]},
+				 {td, [S]},
+				 {td, [L]}
+				]}
+		       end, TorrentsScraped)]}],
+    Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
 		   
 request(Req, 'GET', "static/" ++ Path) ->

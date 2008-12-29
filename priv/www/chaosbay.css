@@ -33,8 +33,10 @@ div#content {
     margin: 0 auto;
     max-width: 45em;
     color: #333;
+    text-align: center;
 }
 div#content * {
+    text-align: left;
     max-width: 44em;
 }
 div#content p,
@@ -45,6 +47,10 @@ div#content dl {
 h2, h3 {
     margin: 2em 0 0.1em;
     color: #999;
+}
+div#content img {
+    width: 200px;
+    margin: 0.5em auto;
 }
 div#content .important {
     border: 1px solid #774;
