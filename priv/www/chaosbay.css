@@ -24,6 +24,10 @@ div#head h1 {
     font-weight: bold;
     margin-right: 5em;
 }
+div#head h1 a {
+    color: white;
+    text-decoration: none;
+}
 
 div#content {
     margin: 0 auto;
@@ -95,6 +99,22 @@ div#content dl dt:after {
 }
 div#content dl dd {
     font-size: small;
+}
+div#content #comments {
+    padding: 0em 1em;
+}
+#comment-data {
+    text-align: left;
+}
+#comment-data h3 {
+    font-size: small;
+    padding: 1em 0 0;
+    margin: 0;
+}
+#comment-data pre {
+    font-size: small;
+    padding: 0;
+    margin: 0;
 }
 .code {
     font-size: x-small;

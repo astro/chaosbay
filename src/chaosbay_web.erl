@@ -9,6 +9,7 @@
 -export([start/1, stop/0, loop/1]).
 
 -include("../include/torrent.hrl").
+-include("../include/comment.hrl").
 
 %% External API
 
@@ -122,6 +123,42 @@ request(Req, 'GET', "static/" ++ Path) ->
     Req:serve_file(Path, DocRoot, [{"Cache-Control", "max-age=7200"},
 				   {"Expires", "Thu, 30 Oct 2008 23:42:59 GMT"}]);
 
+request(Req, Method, "comments/" ++ Name)
+  when Method =:= 'GET';
+       Method =:= 'POST' ->
+    receive
+	after 2000 -> ok
+	end,
+
+    if
+	Method =:= 'POST' ->
+	    Posted = Req:parse_post(),
+	    {value, {_, Text}} = lists:keysearch("text", 1, Posted),
+	    comment:add(Name, Text);
+	true -> no_post
+    end,
+
+    Body = lists:map(
+	     fun(#comment{date = Date,
+			  text = Text}) ->
+		     HTML =
+			 [{h3,
+			   [list_to_binary([util:human_duration(
+					      util:mk_timestamp() - Date),
+					    " ago"])]},
+			  {pre, [Text]}],
+		     lists:map(fun html:to_iolist/1, HTML)
+	     end, comment:get_comments(Name)),
+    Req:ok({"text/html",
+	    [Body, <<"
+<h3>Post</h3>
+<form onsubmit='submitComment(); return false;'>
+  <textarea id='comment-text' cols='40' rows='5'></textarea>
+  <br/>
+  <input type='submit' value='post'/>
+</form>
+">>]});
+
 request(Req, 'GET', {download, Name}) ->
     case torrent:get_torrent_by_name(Name) of
 	#torrent{binary = Binary} ->
@@ -176,7 +213,10 @@ request(Req, 'GET', {details, Name}) ->
 		    {ul,
 		     [{li, [{"class", "code"}],
 		       [Tracker]}
-		      || Tracker <- torrent_info:get_trackers(Torrent)]}
+		      || Tracker <- torrent_info:get_trackers(Torrent)]},
+		    {h2, ["Comments"]},
+		    {'div', [{"id", "comments"}],
+		     [{p, ["Sorry, I were not able to resist the urge to do this with JavaScript"]}]}
 		    ],
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
@@ -203,11 +243,13 @@ html_ok(Req, Body) ->
     <meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
     <title>Chaos Bay</title>
     <link rel='stylesheet' type='text/css' href='/static/chaosbay.css'/>
+    <script type='text/javascript' src='/static/jquery-1.2.6.min.js'></script>
+    <script type='text/javascript' src='/static/comments.js'></script>
   </head>
   <body>
     <div id='head'>
       <p><a href='/add'>Add</a></p>
-      <h1>Chaos Bay</h1>
+      <h1><a href='/'>Chaos Bay</a></h1>
     </div>
     <div id='content'>
 ">>, Body, <<"
