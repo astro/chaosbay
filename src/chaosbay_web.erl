@@ -162,8 +162,8 @@ Running on ">>,
 		 [] ->
 		     [];
 		 VisibleNodes ->
-		     [[atom_to_list(Node)
-		      || Node <- VisibleNodes],
+		     [string:join([atom_to_list(Node)
+				   || Node <- VisibleNodes], ", "),
 		      <<" and ">>]
 	     end,
 	     atom_to_list(node()),
