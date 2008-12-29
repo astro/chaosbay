@@ -20,10 +20,10 @@ scrape(Id) ->
     Scrapes = util:pmap(fun(ScrapeURL) ->
 				scrape(ScrapeURL, Id)
 			end, ?SCRAPE_URLs),
-    lists:foldl(fun({ok, Seeders, Leechers}, {ok, S, _L}) when Seeders > S ->
-			{ok, Seeders, Leechers};
-		   ({ok, Seeders, Leechers}, unknown) ->
-			{ok, Seeders, Leechers};
+    lists:foldl(fun({ok, Seeders, Leechers, Downloaded}, {ok, S, _L, _D}) when Seeders > S ->
+			{ok, Seeders, Leechers, Downloaded};
+		   ({ok, Seeders, Leechers, Downloaded}, unknown) ->
+			{ok, Seeders, Leechers, Downloaded};
 		   (_, R) ->
 			R
 		end, unknown, Scrapes).
@@ -117,6 +117,7 @@ do_scrape(ScrapeURL, Id) ->
 	{value, {_, Info, _}} ->
 	    {value, {_, Seeders, _}} = lists:keysearch(<<"complete">>, 1, Info),
 	    {value, {_, Leechers, _}} = lists:keysearch(<<"incomplete">>, 1, Info),
-	    {ok, Seeders, Leechers};
-	false -> {ok, 0, 0}
+	    {value, {_, Downloaded, _}} = lists:keysearch(<<"downloaded">>, 1, Info),
+	    {ok, Seeders, Leechers, Downloaded};
+	false -> {ok, 0, 0, 0}
     end.

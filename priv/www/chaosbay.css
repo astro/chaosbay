@@ -34,7 +34,8 @@ div#content * {
     max-width: 44em;
 }
 div#content p,
-div#content form {
+div#content form,
+div#content dl {
     margin: 0 0 1em;
 }
 h2, h3 {
@@ -84,6 +85,20 @@ div#content table tr.dead td {
 }
 div#content table tr.starving td {
     background: #fcc;
+}
+div#content dl dt {
+    color: #999;
+    font-weight: bold;
+}
+div#content dl dt:after {
+    content: ":";
+}
+div#content dl dd {
+    font-size: small;
+}
+div#content dl dd.hash {
+    font-size: x-small;
+    font-family: monospace;
 }
 
 p#foot {

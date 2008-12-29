@@ -73,7 +73,7 @@ request(Req, 'POST', "add") ->
 <h2>Very good!</h2>
 <p>Now please download our .torrent file and seed that!</p>
 <p class='important'><a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
-<p>Then, go back to the <a href='/'>index</a> or <a href='/add'>add</a> another Torrent.</p>
+<p>Then, view <a href='">>, link_to_details(Name), <<"'>details</a>, go back to the <a href='/'>index</a> or <a href='/add'>add</a> another Torrent.</p>
 ">>]);
 	exists ->
 	    html_ok(Req, <<"
@@ -100,10 +100,12 @@ request(Req, 'GET', "") ->
 	  | lists:map(fun({#torrent{name = Name,
 				    length = Length,
 				    date = Date}, S, L, Class}) ->
-			      Link = link_to_torrent(Name),
+			      LinkDetails = link_to_details(Name),
+			      LinkTorrent = link_to_torrent(Name),
 			      {tr, [{"class", Class}],
-			       [{td, [Name]},
-				{td, [{a, [{"href", Link},
+			       [{td, [{a, [{"href", LinkDetails}],
+				       [Name]}]},
+				{td, [{a, [{"href", LinkTorrent},
 					   {"class", "download"}],
 				       ["Get"]}]},
 				{td, [util:human_length(Length)]},
@@ -120,22 +122,73 @@ request(Req, 'GET', "static/" ++ Path) ->
     Req:serve_file(Path, DocRoot, [{"Cache-Control", "max-age=7200"},
 				   {"Expires", "Thu, 30 Oct 2008 23:42:59 GMT"}]);
 
+request(Req, 'GET', {download, Name}) ->
+    case torrent:get_torrent_by_name(Name) of
+	#torrent{binary = Binary} ->
+	    Req:ok({"application/x-bittorrent",
+		    Binary});
+	not_found ->
+	    Req:not_found()
+    end;
+
+request(Req, 'GET', {details, Name}) ->
+    case torrent:get_torrent_by_name(Name) of
+	#torrent{id = Id,
+		 length = Length,
+		 binary = Binary} ->
+	    Torrent = benc:parse(Binary),
+	    {S, L, D} =
+		case scrape:scrape(Id) of
+		    {ok, Seeders, Leechers, Downloads} ->
+			{integer_to_list(Seeders),
+			 integer_to_list(Leechers),
+			 integer_to_list(Downloads)};
+		    _ ->
+			{"Unknown",
+			 "Unknown",
+			 "Unknown"}
+		end,
+	    HTML = [{h2, [Name]},
+		    {dl, [{dt, ["Size"]},
+			  {dd, [util:human_length(Length)]},
+			  {dt, ["Info-Hash"]},
+			  {dd, [{"class", "hash"}],
+			   [mochiweb_util:quote_plus(binary_to_list(Id))]},
+			  {dt, ["Seeders"]},
+			  {dd, [S]},
+			  {dt, ["Leechers"]},
+			  {dd, [L]},
+			  {dt, ["Downloaded"]},
+			  {dd, [D]}]},
+		    {p, [{"class", "important"}],
+		     ["Download ",
+		      {a, [{"href", link_to_torrent(Name)},
+			   {"rel", "enclosure"}],
+		       [Name]}]},
+		    {h2, ["Contents"]},
+		    {table,
+		     [{tr, [{th, ["Path"]},
+			    {th, ["Size"]}]}
+		      | [{tr, [{td, [FileName]},
+			       {td, [util:human_length(FileLength)]}]}
+			 || {FileName, FileLength} <- torrent_info:get_files(Torrent)]]}
+		    ],
+	    io:format("HTML: ~p~n",[HTML]),
+	    Body = lists:map(fun html:to_iolist/1, HTML),
+	    html_ok(Req, Body);
+	not_found ->
+	    Req:not_found()
+    end;
+
 request(Req, 'GET', Path) ->
     PathLen = string:len(Path),
     case string:rstr(Path, ".torrent") of
 	N when N == PathLen - 7 ->
 	    Name = string:sub_string(Path, 1, PathLen - 8),
-	    case torrent:get_torrent_by_name(Name) of
-		#torrent{binary = Binary} ->
-		    Req:ok({"application/x-bittorrent",
-			    Binary});
-		not_found ->
-		    Req:not_found()
-	    end;
+	    request(Req, 'GET', {download, Name});
 	_ ->
-	    Req:not_found()
+	    request(Req, 'GET', {details, Path})
     end.
-
 
 html_ok(Req, Body) ->
     Req:ok({"text/html",
@@ -173,22 +226,27 @@ Running on ">>,
   </body>
 </html>">>]}).
 
+link_to_details(Name) when is_binary(Name) ->
+    link_to_details(binary_to_list(Name));
+link_to_details(Name) ->
+    "/" ++ mochiweb_util:quote_plus(Name).
+
 link_to_torrent(Name) when is_binary(Name) ->
     link_to_torrent(binary_to_list(Name));
 link_to_torrent(Name) ->
-"/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
+    "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
 
 torrents_with_scrapes(Torrents) ->
     util:pmap(
       fun(#torrent{id = Id} = Torrent) ->
 	      {S, L, Class} = case scrape:scrape(Id) of
-				  {ok, 0, 0} ->
+				  {ok, 0, 0, _} ->
 				      {"0", "0", "dead"};
-				  {ok, 0, L1} ->
+				  {ok, 0, L1, _} ->
 				      {"0",
 				       integer_to_list(L1),
 				       "starving"};
-				  {ok, S1, L1} ->
+				  {ok, S1, L1, _} ->
 				      {integer_to_list(S1),
 				       integer_to_list(L1),
 				       ""};

@@ -1,6 +1,6 @@
 -module(torrent_info).
 
--export([info_hash/1, get_length/1, add_trackers/1]).
+-export([info_hash/1, get_length/1, get_files/1, add_trackers/1]).
 
 info_hash(Torrent) ->
     {value, {_, _, <<Hash/binary>>}} = lists:keysearch(<<"info">>, 1, Torrent),
@@ -8,25 +8,36 @@ info_hash(Torrent) ->
 
 
 get_length(Torrent) ->
+    lists:foldl(fun({_Name, Size}, Total) ->
+			Total + Size
+		end, 0, get_files(Torrent)).
+
+get_files(Torrent) ->
     {value, {_, Info, _}} = lists:keysearch(<<"info">>, 1, Torrent),
     case lists:keysearch(<<"files">>, 1, Info) of
 	{value, {_, Files, _}} ->
-	    lists:foldl(
-	      fun(File, Length) ->
+	    lists:map(
+	      fun(File) ->
+		      {value, {_, FilePath, _}} =
+			  lists:keysearch(<<"path">>, 1, File),
 		      {value, {_, FileLength, _}} =
 			  lists:keysearch(<<"length">>, 1, File),
-		      Length + FileLength
-	      end, 0, Files);
+		      {FilePath, FileLength}
+	      end, Files);
 	_ ->
+	    FileName = case lists:keysearch(<<"name">>, 1, Info) of
+			   {value, {_, Name, _}} -> Name;
+			   _ -> <<"Unknown">>
+		       end,
 	    case lists:keysearch(<<"length">>, 1, Info) of
 		{value, {_, Length, _}} ->
-		    Length;
+		    [{FileName, Length}];
 		_ ->
 		    {value, {_, PieceLength, _}} =
 			lists:keysearch(<<"piece length">>, 1, Info),
 		    {value, {_, Pieces, _}} =
 			lists:keysearch(<<"pieces">>, 1, Info),
-		    (size(Pieces) div 20) * PieceLength
+		    [{FileName, (size(Pieces) div 20) * PieceLength}]
 	    end
     end.
 
