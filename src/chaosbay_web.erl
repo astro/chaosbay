@@ -126,9 +126,6 @@ request(Req, 'GET', "static/" ++ Path) ->
 request(Req, Method, "comments/" ++ Name)
   when Method =:= 'GET';
        Method =:= 'POST' ->
-    receive
-	after 2000 -> ok
-	end,
 
     if
 	Method =:= 'POST' ->
