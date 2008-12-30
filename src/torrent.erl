@@ -1,6 +1,6 @@
 -module(torrent).
 
--export([init/0, add/2, recent/1, get_torrent_by_name/1]).
+-export([init/0, add/2, add_http/1, add_from_dir/1, recent/1, get_torrent_by_name/1]).
 
 -include("../include/torrent.hrl").
 
@@ -9,6 +9,25 @@ init() ->
     mnesia:create_schema([node()]),
     mnesia:start(),
     mnesia:create_table(torrent, [{attributes, record_info(fields, torrent)}]).
+
+add_http(URL) ->
+    [Filename | _] = lists:reverse(string:tokens(URL, "/")),
+    {ok, {{_, 200, _}, _Attrs, Body}} = http:request(URL),
+    add(Filename, list_to_binary(Body)).
+add_from_dir(Dir) ->
+    {ok, Files} = file:list_dir(Dir),
+    lists:map(fun(File) ->
+			  FileLen = string:len(File),
+			  case string:rstr(File, ".torrent") of
+			      N when FileLen > 8, N == FileLen - 7 ->
+				  Name = string:sub_string(File, 1, FileLen - 8),
+				  io:format("Reading ~p~n",[Dir ++ "/" ++ File]),
+				  {ok, Bin} = file:read_file(Dir ++ "/" ++ File),
+				  R = add(Name, Bin),
+				  {File, R};
+			      _ -> {File, ignored}
+			  end
+		  end, Files).
 
 add(Filename, Upload) when is_list(Filename) ->
     add(list_to_binary(Filename), Upload);
