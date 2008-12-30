@@ -232,7 +232,7 @@ request(Req, 'GET', {details, Name}) ->
 request(Req, 'GET', Path) ->
     PathLen = string:len(Path),
     case string:rstr(Path, ".torrent") of
-	N when N == PathLen - 7 ->
+	N when PathLen > 8, N == PathLen - 7 ->
 	    Name = string:sub_string(Path, 1, PathLen - 8),
 	    request(Req, 'GET', {download, Name});
 	_ ->
