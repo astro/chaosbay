@@ -84,6 +84,34 @@ request(Req, 'POST', "add") ->
 ">>)
     end;
 
+request(Req, 'GET', "webseed") ->
+    html_ok(Req, <<"
+<h2>Add HTTP-Seed</h2>
+<form class='important' method='POST' action='/webseed' enctype='multipart/form-data'>
+<label for='url'>URL:</label>
+<input name='url' id='url' size='80'/>
+<input type='submit' value='GET'/>
+</form>
+<p>
+<i>Important:</i> your client must support the
+<a href='http://www.bittorrent.org/beps/bep_0019.html'>WebSeed extension</a>
+to retrieve and seed this file.
+</p>
+">>);
+
+request(Req, 'POST', "webseed") ->
+    Multipart = mochiweb_multipart:parse_form(Req),
+    URL = proplists:get_value("url", Multipart),
+    {ok, Name} = webseed:start(URL),
+    html_ok(Req, [<<"
+<p class='important'>
+I am now downloading this file to build a .torrent file.
+You may check its <a href='/webseed/">>,
+		  mochiweb_util:quote_plus(Name),
+		  <<"'>status.</a>
+</p>
+">>]);
+
 request(Req, 'GET', "") ->
     Torrents = torrent:recent(1000),
     TorrentsScraped = torrents_with_scrapes(Torrents),
