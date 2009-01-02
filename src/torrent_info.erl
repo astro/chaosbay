@@ -55,6 +55,10 @@ get_trackers(Torrent) ->
 	end,
     [Tracker | lists:append(Trackers)].
 
+%% The first tracker URL should be vanilla HTTP for legacy clients
+%% that DON'T:
+%% * support announce-lists
+%% * support UDP trackers
 -define(TRACKER_URLS, [<<"udp://81.163.2.20:6969/announce">>,
 		       <<"udp://81.163.2.24:6969/announce">>,
 		       <<"udp://81.163.2.23:6969/announce">>,
