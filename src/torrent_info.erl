@@ -59,16 +59,20 @@ get_trackers(Torrent) ->
 %% that DON'T:
 %% * support announce-lists
 %% * support UDP trackers
--define(TRACKER_URLS, [<<"udp://81.163.2.20:6969/announce">>,
-		       <<"udp://81.163.2.24:6969/announce">>,
-		       <<"udp://81.163.2.23:6969/announce">>,
-		       <<"http://81.163.2.20:6969/announce">>,
-		       <<"http://81.163.2.24:6969/announce">>,
-		       <<"http://81.163.2.23:6969/announce">>,
-		       <<"dht://">>]).
+%% -define(TRACKER_URLS, [<<"udp://81.163.2.20:6969/announce">>,
+%% 		       <<"udp://81.163.2.24:6969/announce">>,
+%% 		       <<"udp://81.163.2.23:6969/announce">>,
+%% 		       <<"http://81.163.2.20:6969/announce">>,
+%% 		       <<"http://81.163.2.24:6969/announce">>,
+%% 		       <<"http://81.163.2.23:6969/announce">>,
+%% 		       <<"dht://">>]).
+-define(TRACKER_URLS, []).
 
 add_trackers(Torrent) ->
     add_trackers1(Torrent, ?TRACKER_URLS).
+
+add_trackers1(Torrent, []) ->
+    Torrent;
 
 add_trackers1(Torrent, [URL1 | _] = URLs) ->
     Tracker1 =
