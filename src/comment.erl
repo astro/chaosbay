@@ -7,6 +7,7 @@
 
 init() ->
     mnesia:create_table(comment, [{type, bag},
+				  {disc_copies, node()},
 				  {attributes, record_info(fields, comment)}]).
 
 add(Name, Text) when is_list(Name) ->

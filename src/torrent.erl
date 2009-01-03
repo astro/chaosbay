@@ -8,7 +8,8 @@
 init() ->
     mnesia:create_schema([node()]),
     mnesia:start(),
-    mnesia:create_table(torrent, [{attributes, record_info(fields, torrent)}]).
+    mnesia:create_table(torrent, [{disc_copies, node()},
+				  {attributes, record_info(fields, torrent)}]).
 
 add_http(URL) ->
     [Filename | _] = lists:reverse(string:tokens(URL, "/")),
