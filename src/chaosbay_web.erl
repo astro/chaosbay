@@ -177,10 +177,10 @@ request(Req, 'GET', {details, Name}) ->
     case torrent:get_torrent_by_name(Name) of
 	#torrent{id = Id,
 		 length = Length,
-		 binary = Binary} ->
-	    Torrent = benc:parse(Binary),
+		 parsed = Parsed} ->
+	    Trackers = torrent_info:get_trackers(Parsed),
 	    {S, L, D} =
-		case scrape:scrape(Id) of
+		case scrape:scrape(Trackers, Id) of
 		    {ok, Seeders, Leechers, Downloads} ->
 			{integer_to_list(Seeders),
 			 integer_to_list(Leechers),
@@ -213,12 +213,12 @@ request(Req, 'GET', {details, Name}) ->
 			    {th, ["Size"]}]}
 		      | [{tr, [{td, [FileName]},
 			       {td, [util:human_length(FileLength)]}]}
-			 || {FileName, FileLength} <- torrent_info:get_files(Torrent)]]},
+			 || {FileName, FileLength} <- torrent_info:get_files(Parsed)]]},
 		    {h2, ["Trackers"]},
 		    {ul,
 		     [{li, [{"class", "code"}],
 		       [Tracker]}
-		      || Tracker <- torrent_info:get_trackers(Torrent)]},
+		      || Tracker <- torrent_info:get_trackers(Parsed)]},
 		    {h2, ["Comments"]},
 		    {'div', [{"id", "comments"}],
 		     [{p, ["Sorry, I were not able to resist the urge to do this with JavaScript"]}]}
@@ -297,9 +297,11 @@ torrents_with_scrapes(Torrents) ->
 	end,
     {atomic, TorrentsWithComments} = mnesia:transaction(F),
     util:pmap(
-      fun({#torrent{id = Id} = Torrent, C}) ->
+      fun({#torrent{id = Id,
+		    parsed = Parsed} = Torrent, C}) ->
 	      CS = integer_to_list(C),
-	      {S, L, Class} = case scrape:scrape(Id) of
+	      Trackers = torrent_info:get_trackers(Parsed),
+	      {S, L, Class} = case scrape:scrape(Trackers, Id) of
 				  {ok, 0, 0, _} ->
 				      {"0", "0", "dead"};
 				  {ok, 0, L1, _} ->
