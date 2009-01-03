@@ -97,7 +97,9 @@ spawn_worker(ScrapeURL, Id) ->
 	  end).
 
 worker(ScrapeURL, Id) ->
-    Result = case (catch do_scrape(ScrapeURL, Id)) of
+    Result = case (catch util:timeout(fun() ->
+					      catch do_scrape(ScrapeURL, Id)
+				      end, (?STARVE_TIMEOUT + 1) * 1000)) of
 		 {'EXIT', Reason} ->
 		     error_logger:error_msg("Scrape failed: ~p~n", [Reason]),
 		     Reason;

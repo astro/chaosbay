@@ -1,6 +1,6 @@
 -module(util).
 
--export([mk_timestamp/0, human_length/1, human_duration/1, pmap/2]).
+-export([mk_timestamp/0, human_length/1, human_duration/1, pmap/2, timeout/2]).
 
 mk_timestamp() ->
     {MS, S, _} = erlang:now(),
@@ -49,3 +49,18 @@ pmap(Fun, List) ->
      end
      || Pid <- Pids].
 
+
+timeout(Fun, Timeout) ->
+    I = self(),
+    Ref = make_ref(),
+    Pid = spawn_link(fun() ->
+			     Result = Fun(),
+			     I ! {Ref, Result}
+		     end),
+    receive
+	{Ref, Result} ->
+	    Result
+    after Timeout ->
+	    exit(Pid, timeout),
+	    exit(timeout)
+    end.
