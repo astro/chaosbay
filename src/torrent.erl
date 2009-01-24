@@ -9,7 +9,8 @@
 
 -define(INFO_DOC(Name), "info:" ++ Name).
 -define(TORRENT_DOC(Name), "torrent:" ++ Name).
--define(TRACKER_DOC(Id), "tracker:" ++ base64:encode(Id)).
+-define(TRACKER_DOC64(Id), "tracker:" ++ Id).
+-define(TRACKER_DOC(Id), ?TRACKER_DOC64(base64:encode(Id))).
 -define(COMMENTS_DOC(Name), "comments:" ++ Name).
 
 
@@ -103,18 +104,39 @@ get_torrent_by_name(Name) ->
 		      couch_lier:read(chaosbay, ?TORRENT_DOC(Name))} of
 		    {{struct, []},
 		     {struct, []}} -> not_found;
-		    {JSON_Info, JSON_Torrent} ->
-			{JSON_Info, JSON_Torrent}			
+		    {{struct, InfoDict} = JSON_Info, JSON_Torrent} ->
+			{value, {_, HashId64}} =
+			    lists:keysearch(<<"hash_id">>, 1, InfoDict),
+			JSON_Tracker =
+			    couch_lier:read(chaosbay, ?TRACKER_DOC64(HashId64)),
+			{JSON_Info, JSON_Tracker, JSON_Torrent}			
 		end
 	end,
     case couch_lier:transaction(F) of
 	{atomic, not_found} -> not_found;
 	{atomic, {JSON_Info,
+		  {struct, Dict_Tracker},
 		  {struct, Dict_Torrent}}} ->
+	    {value, {_, Completed}} =
+		lists:keysearch(<<"completed">>, 1, Dict_Tracker),
+	    {value, {_, {struct, Peers}}} =
+		lists:keysearch(<<"peers">>, 1, Dict_Tracker),
+	    {Seeders, Leechers} =
+		lists:foldl(fun(Peer, {S, L}) ->
+				    case json_to_peer(Peer) of
+					{_, seeder, _, _} ->
+					    {S + 1, L};
+					{_, leecher, _, _} ->
+					    {S, L + 1}
+				    end
+			    end, {0, 0}, Peers),
 	    Torrent = json_to_torrent(JSON_Info),
 	    {value, {_, Binary}} =
 		lists:keysearch(<<"data">>, 1, Dict_Torrent),
-	    Torrent#torrent{binary = base64:decode(Binary)}
+	    Torrent#torrent{binary = base64:decode(Binary),
+			    seeders = Seeders,
+			    leechers = Leechers,
+			    completed = Completed}
     end.
 
 
@@ -130,17 +152,16 @@ torrent_to_json(#torrent{} = Torrent) ->
 	{struct, [{data, base64:encode(Torrent#torrent.binary)}]},
     {JSON_Info, JSON_Torrent}.
 
-json_to_torrent({struct, Dict} = JSON) ->
-    Comments = case lists:keysearch(<<"comments">>, 1, Dict) of
-		   {value, {_, C}} when is_integer(C) -> C;
-		   _ -> unknown
-	       end,
+json_to_torrent(JSON) ->
     #torrent{name = get_json_dict_val(name, JSON),
 	     hash_id = base64:decode(get_json_dict_val(hash_id, JSON)),
 	     length = get_json_dict_val(length, JSON),
 	     category = get_json_dict_val(category, JSON),
 	     date = get_json_dict_val(date, JSON),
-	     comments = Comments}.
+	     comments = get_json_dict_val(comments, JSON, unknown),
+	     seeders = get_json_dict_val(seeders, JSON, unknown),
+	     leechers = get_json_dict_val(leechers, JSON, unknown),
+	     completed = get_json_dict_val(completed, JSON, unknown)}.
 
 
 get_json_dict_val(Key, JSON) when is_atom(Key) ->
@@ -150,6 +171,18 @@ get_json_dict_val(Key, JSON) when is_list(Key) ->
 get_json_dict_val(Key, {struct, Dict}) when is_binary(Key) ->
     {value, {_, Value}} = lists:keysearch(Key, 1, Dict),
     Value.
+
+get_json_dict_val(Key, JSON, Default) when is_atom(Key) ->
+    get_json_dict_val(atom_to_list(Key), JSON, Default);
+get_json_dict_val(Key, JSON, Default) when is_list(Key) ->
+    get_json_dict_val(list_to_binary(Key), JSON, Default);
+get_json_dict_val(Key, {struct, Dict}, Default) when is_binary(Key) ->
+    case lists:keysearch(Key, 1, Dict) of
+	{value, {_, Value}} ->
+	    Value;
+	false ->
+	    Default
+    end.
 
 
 add_comment(Name, Text) when is_binary(Name) ->

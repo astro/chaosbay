@@ -4,6 +4,7 @@
 		  category = "Other",
 		  date = 0,
 		  comments,
-		  binary = <<>>}).
+		  binary = <<>>,
+		  seeders, leechers, completed}).
 
 -record(comment, {date, text}).

@@ -100,10 +100,26 @@ request(Req, 'GET', "") ->
 	   | lists:map(fun(#torrent{name = Name,
 				    length = Length,
 				    date = Date,
-				    comments = Comments}) ->
-						%, S, L, Class, C
-			       {S,L,C}={"?","?",integer_to_list(Comments)},
-			       Class = "",
+				    comments = Comments,
+				    seeders = Seeders,
+				    leechers = Leechers}) ->
+			       C = integer_to_list(Comments),
+			       {S, L, Class} =
+				   case {Seeders, Leechers} of
+				       {0, 0} ->
+					   {"0", "0",
+					    "dead"};
+				       {0, _} when is_integer(Leechers) ->
+					   {"0", integer_to_list(Leechers),
+					    "starving"};
+				       {_, _} when is_integer(Seeders),
+						   is_integer(Leechers) ->
+					   {integer_to_list(Seeders), integer_to_list(Leechers),
+					    ""};
+				       _ ->
+					   {"?", "?",
+					    "dead"}
+				   end,
 			       LinkDetails = link_to_details(Name),
 			       LinkTorrent = link_to_torrent(Name),
 			       {tr, [{"class", Class}],
@@ -176,8 +192,12 @@ request(Req, 'GET', {download, Name}) ->
 request(Req, 'GET', {details, Name}) ->
     case torrent:get_torrent_by_name(Name) of
 	#torrent{hash_id = HashId,
-		 length = Length} ->
-	    {S, L, D} = {"?","?","?"},
+		 length = Length,
+		 binary = Binary} = Torrent ->
+	    {S, L, D} = {integer_to_list(Torrent#torrent.seeders),
+			 integer_to_list(Torrent#torrent.leechers),
+			 integer_to_list(Torrent#torrent.completed)},
+	    Parsed = benc:parse(Binary),
 	    HTML = [{h2, [Name]},
 		    {dl, [{dt, ["Size"]},
 			  {dd, [util:human_length(Length)]},
@@ -195,18 +215,17 @@ request(Req, 'GET', {details, Name}) ->
 		      {a, [{"href", link_to_torrent(Name)},
 			   {"rel", "enclosure"}],
 		       [Name]}]},
-%% 		    {h2, ["Contents"]},
-%% 		    {table,
-%% 		     [{tr, [{th, ["Path"]},
-%% 			    {th, ["Size"]}]}
-%% 		      | [{tr, [{td, [FileName]},
-%% 			       {td, [util:human_length(FileLength)]}]}
-%% 			 || {FileName, FileLength} <- torrent_info:get_files(Parsed)]]},
+ 		    {h2, ["Contents"]},
+ 		    {table,
+ 		     [{tr, [{th, ["Path"]},
+ 			    {th, ["Size"]}]}
+ 		      | [{tr, [{td, [FileName]},
+ 			       {td, [util:human_length(FileLength)]}]}
+ 			 || {FileName, FileLength} <- torrent_info:get_files(Parsed)]]},
 		    {h2, ["Comments"]},
 		    {'div', [{"id", "comments"}],
 		     [{p, ["Sorry, I were not able to resist the urge to do this with JavaScript"]}]}
 		    ],
-	    io:format("HTML: ~p~n",[HTML]),
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
 	not_found ->

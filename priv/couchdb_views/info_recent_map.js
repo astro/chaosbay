@@ -7,6 +7,9 @@ function(doc)
       "info": name
     };
     doc.comments = 0;
+    doc.downloaded = 0;
+    doc.seeders = 0;
+    doc.leechers = 0;
     emit([name, "info"], doc);
   }
   else if (doc._id.indexOf("comments:") == 0)
@@ -20,9 +23,9 @@ function(doc)
   }
   else if (doc._id.indexOf("tracker:") == 0)
   {
-    var id = doc._id.substr(8);
+    var name = doc.torrent;
     doc._id = {
-      "tracker": id
+      "tracker": name
     };
     doc.seeders = 0;
     doc.leechers = 0;
@@ -35,6 +38,6 @@ function(doc)
 	doc.leechers++;
     }
     doc.peers = null;
-    emit([id, "tracker"], doc); // <- reduce?
+    emit([name, "tracker"], doc);
   }
 }
