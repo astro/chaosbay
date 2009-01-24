@@ -1,8 +1,16 @@
 -module(torrent).
 
--export([init/0, add/2, add_http/1, add_from_dir/1, recent/0, get_torrent_by_name/1, add_comment/2, get_comments/1]).
+-export([init/0, add/2, add_http/1, add_from_dir/1,
+	 recent/0, get_torrent_by_name/1,
+	 add_comment/2, get_comments/1,
+	 tracker_request/7]).
 
 -include("../include/torrent.hrl").
+
+-define(INFO_DOC(Name), "info:" ++ Name).
+-define(TORRENT_DOC(Name), "torrent:" ++ Name).
+-define(TRACKER_DOC(Id), "tracker:" ++ base64:encode(Id)).
+-define(COMMENTS_DOC(Name), "comments:" ++ Name).
 
 
 init() ->
@@ -49,12 +57,17 @@ add(Filename, Upload) ->
     {JSON_Info, JSON_Torrent} = J = torrent_to_json(Torrent),
     io:format("J: ~p~n",[J]),
     F = fun() ->
-		case {couch_lier:read(chaosbay, "info:" ++ NewFilename),
-		      couch_lier:read(chaosbay, "torrent:" ++ NewFilename)} of
+		case {couch_lier:read(chaosbay, ?INFO_DOC(NewFilename)),
+		      couch_lier:read(chaosbay, ?TORRENT_DOC(NewFilename))} of
 		    {{struct, []},
 		     {struct, []}} ->
-			couch_lier:write(chaosbay, "info:" ++ NewFilename, JSON_Info),
-			couch_lier:write(chaosbay, "torrent:" ++ NewFilename, JSON_Torrent),
+			couch_lier:write(chaosbay, ?INFO_DOC(NewFilename), JSON_Info),
+			couch_lier:write(chaosbay, ?TORRENT_DOC(NewFilename), JSON_Torrent),
+			couch_lier:write(chaosbay, ?TRACKER_DOC(HashId),
+					 {struct, [{<<"torrent">>, list_to_binary(NewFilename)},
+						   {<<"completed">>, 0},
+						   {<<"peers">>, {struct, []}}
+						  ]}),
 			{ok, NewFilename};
 		    _ ->
 			exists
@@ -86,8 +99,8 @@ get_torrent_by_name(Name) when is_binary(Name) ->
 
 get_torrent_by_name(Name) ->
     F = fun() ->
-		case {couch_lier:read(chaosbay, "info:" ++ Name),
-		      couch_lier:read(chaosbay, "torrent:" ++ Name)} of
+		case {couch_lier:read(chaosbay, ?INFO_DOC(Name)),
+		      couch_lier:read(chaosbay, ?TORRENT_DOC(Name))} of
 		    {{struct, []},
 		     {struct, []}} -> not_found;
 		    {JSON_Info, JSON_Torrent} ->
@@ -149,7 +162,7 @@ add_comment(Name, Text) ->
     Now = util:mk_timestamp(),
     F = fun() ->
 		{struct, OldDict} =
-		    case couch_lier:read(chaosbay, "comments:" ++ Name) of
+		    case couch_lier:read(chaosbay, ?COMMENTS_DOC(Name)) of
 			{struct, []} ->
 			    {struct, [{<<"comments">>, []}]};
 			{struct, _Dict} = J ->
@@ -166,8 +179,7 @@ add_comment(Name, Text) ->
 			       {<<"text">>, Text}]}],
 		NewDict = lists:keystore(<<"comments">>, 1, OldDict,
 					 {<<"comments">>, NewComments}),
-		io:format("NewDict: ~p~n",[NewDict]),
-		couch_lier:write(chaosbay, "comments:" ++ Name, {struct, NewDict})
+		couch_lier:write(chaosbay, ?COMMENTS_DOC(Name), {struct, NewDict})
 	end,
     {atomic, _} = couch_lier:transaction(F).
 
@@ -176,7 +188,7 @@ get_comments(Name) when is_binary(Name) ->
 
 get_comments(Name) ->
     F = fun() ->
-		couch_lier:read(chaosbay, "comments:" ++ Name)
+		couch_lier:read(chaosbay, ?COMMENTS_DOC(Name))
 	end,
     {atomic, {struct, Dict}} = couch_lier:transaction(F),
     case lists:keysearch(<<"comments">>, 1, Dict) of
@@ -189,3 +201,55 @@ get_comments(Name) ->
 json_to_comment(JSON) ->
     #comment{date = get_json_dict_val(date, JSON),
 	     text = get_json_dict_val(text, JSON)}.
+
+
+tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Event) ->
+    F = fun() ->
+		case couch_lier:read(chaosbay, ?TRACKER_DOC(HashId)) of
+		    {struct, []} ->
+			not_found;
+		    {struct, Dict1} ->
+			Dict2 =
+			    case Event of
+				<<"completed">> ->
+				    {value, {_, Completed}} =
+					lists:keysearch(<<"completed">>, 1, Dict1),
+				    lists:keystore(<<"completed">>, 1, Dict1,
+						   {<<"completed">>, Completed + 1});
+				_ ->
+				    Dict1
+			    end,
+			{value, {_, {struct, Peers1}}} =
+			    lists:keysearch(<<"peers">>, 1, Dict2),
+			Peers2 =
+			    lists:keystore(base64:encode(PeerId), 1, Peers1,
+					   {base64:encode(PeerId),
+					    {struct, [{<<"ip">>, list_to_binary(IP)},
+						      {<<"port">>, Port},
+						      {<<"uploaded">>, Uploaded},
+						      {<<"downloaded">>, Downloaded}]}}),
+			Dict3 =
+			    lists:keystore(<<"peers">>, 1, Dict2,
+					   {<<"peers">>, {struct, Peers2}}),
+			couch_lier:write(chaosbay, ?TRACKER_DOC(HashId),
+					 {struct, Dict3}),
+			Peers2
+		end
+	end,
+    case couch_lier:transaction(F) of
+	{atomic, not_found} ->
+	    not_found;
+	{atomic, PeersDict} ->
+	    Peers = [json_to_peer(PeerJSON)
+		     || PeerJSON <- PeersDict],
+	    PeersWithoutMe = lists:filter(
+			       fun({PeerId1, _IP1, _Port1}) ->
+				       PeerId1 =/= PeerId
+			       end, Peers),
+	    {peers, PeersWithoutMe}
+    end.
+
+json_to_peer({PeerId, JSON}) ->
+    {base64:decode(PeerId),
+     get_json_dict_val(ip, JSON),
+     get_json_dict_val(port, JSON)}.

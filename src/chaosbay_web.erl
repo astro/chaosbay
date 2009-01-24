@@ -213,6 +213,57 @@ request(Req, 'GET', {details, Name}) ->
 	    Req:not_found()
     end;
 
+request(Req, 'GET', "announce") ->
+    QS = Req:parse_qs(),
+    io:format("announce from ~p: ~p~n",[Req:get(peer),QS]),
+    {value, {_, InfoHash}} = lists:keysearch("info_hash", 1, QS),
+    {value, {_, PeerId1}} = lists:keysearch("peer_id", 1, QS),
+    PeerId2 = list_to_binary(PeerId1),
+    {value, {_, Port1}} = lists:keysearch("port", 1, QS),
+    {Port2, []} = string:to_integer(Port1),
+    Uploaded = case lists:keysearch("uploaded", 1, QS) of
+		   {value, {_, Uploaded1}} ->
+			 case string:to_integer(Uploaded1) of
+			     {Uploaded2, _} when is_integer(Uploaded2) ->
+				 Uploaded2;
+			     _ -> 0
+			 end;
+		   false -> 0
+	       end,
+    Downloaded = case lists:keysearch("downloaded", 1, QS) of
+		     {value, {_, Downloaded1}} -> 
+			 case string:to_integer(Downloaded1) of
+			     {Downloaded2, _} when is_integer(Downloaded2) ->
+				 Downloaded2;
+			     _ -> 0
+			 end;
+		     false -> 0
+		 end,
+    Event = case lists:keysearch("event", 1, QS) of
+		     {value, {_, Event1}} -> list_to_binary(Event1);
+		     false -> <<"empty">>
+		 end,
+
+    Result =
+	torrent:tracker_request(InfoHash, PeerId2,
+				Req:get(peer), Port2,
+				Uploaded, Downloaded, Event),
+    Reply =
+	case Result of
+	    not_found ->
+		[{<<"failure reason">>, <<"No torrent registered for info_hash">>, <<0>>}];
+	    {peers, Peers} ->
+		[{<<"interval">>, 10, <<0>>},
+		 {<<"peers">>, [[{<<"peer id">>, PeerId, <<0>>},
+				 {<<"ip">>, IP, <<0>>},
+				 {<<"port">>, Port, <<0>>}]
+				|| {PeerId, IP, Port} <- Peers],
+		  <<0>>}]
+	end,
+    Bencoded = benc:to_binary(Reply),
+    Req:ok({"application/x-bittorrent",
+	    Bencoded});
+
 request(Req, 'GET', Path) ->
     PathLen = string:len(Path),
     case string:rstr(Path, ".torrent") of
