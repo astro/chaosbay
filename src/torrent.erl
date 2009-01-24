@@ -3,7 +3,7 @@
 -export([init/0, add/2, add_http/1, add_from_dir/1,
 	 recent/0, get_torrent_by_name/1,
 	 add_comment/2, get_comments/1,
-	 tracker_request/7]).
+	 tracker_request/8]).
 
 -include("../include/torrent.hrl").
 
@@ -203,36 +203,48 @@ json_to_comment(JSON) ->
 	     text = get_json_dict_val(text, JSON)}.
 
 
-tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Event) ->
+tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left, Event) ->
+    PeerKey = base64:encode(PeerId),
+    Now = util:mk_timestamp(),
     F = fun() ->
 		case couch_lier:read(chaosbay, ?TRACKER_DOC(HashId)) of
 		    {struct, []} ->
 			not_found;
 		    {struct, Dict1} ->
-			Dict2 =
+			{Action, Dict3} =
 			    case Event of
 				<<"completed">> ->
 				    {value, {_, Completed}} =
 					lists:keysearch(<<"completed">>, 1, Dict1),
-				    lists:keystore(<<"completed">>, 1, Dict1,
-						   {<<"completed">>, Completed + 1});
+				    Dict2 = lists:keystore(<<"completed">>, 1, Dict1,
+							   {<<"completed">>, Completed + 1}),
+				    {add, Dict2};
+				<<"stopped">> ->
+				    {remove, Dict1};
 				_ ->
-				    Dict1
+				    {add, Dict1}
 			    end,
 			{value, {_, {struct, Peers1}}} =
-			    lists:keysearch(<<"peers">>, 1, Dict2),
+			    lists:keysearch(<<"peers">>, 1, Dict3),
 			Peers2 =
-			    lists:keystore(base64:encode(PeerId), 1, Peers1,
-					   {base64:encode(PeerId),
-					    {struct, [{<<"ip">>, list_to_binary(IP)},
-						      {<<"port">>, Port},
-						      {<<"uploaded">>, Uploaded},
-						      {<<"downloaded">>, Downloaded}]}}),
-			Dict3 =
-			    lists:keystore(<<"peers">>, 1, Dict2,
+			    case Action of
+				add ->
+				    lists:keystore(PeerKey, 1, Peers1,
+						   {PeerKey,
+						    {struct, [{<<"ip">>, list_to_binary(IP)},
+							      {<<"port">>, Port},
+							      {<<"uploaded">>, Uploaded},
+							      {<<"downloaded">>, Downloaded},
+							      {<<"left">>, Left},
+							      {<<"seen">>, Now}]}});
+				remove ->
+				    lists:keydelete(PeerKey, 1, Peers1)
+			    end,
+			Dict4 =
+			    lists:keystore(<<"peers">>, 1, Dict3,
 					   {<<"peers">>, {struct, Peers2}}),
 			couch_lier:write(chaosbay, ?TRACKER_DOC(HashId),
-					 {struct, Dict3}),
+					 {struct, Dict4}),
 			Peers2
 		end
 	end,
@@ -243,13 +255,37 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Event) ->
 	    Peers = [json_to_peer(PeerJSON)
 		     || PeerJSON <- PeersDict],
 	    PeersWithoutMe = lists:filter(
-			       fun({PeerId1, _IP1, _Port1}) ->
+			       fun({PeerId1, _Type, _IP1, _Port1}) ->
 				       PeerId1 =/= PeerId
 			       end, Peers),
-	    {peers, PeersWithoutMe}
+	    %% return only leechers for seeders
+	    PeersInteresting = case Left of
+				   0 -> lists:filter(
+					  fun({_, Type, _, _}) ->
+						  Type =:= leecher
+					  end,
+					  PeersWithoutMe);
+				   _ -> PeersWithoutMe
+			       end,
+	    PeersWithoutType = [{PeerId1, IP1, Port1}
+				|| {PeerId1, _Type, IP1, Port1} <- PeersInteresting],
+	    {peers, pick_randomly(PeersWithoutType, 10)}
     end.
 
 json_to_peer({PeerId, JSON}) ->
+    Left = get_json_dict_val(left, JSON),
+    Type = case Left of
+	       0 -> seeder;
+	       _ -> leecher
+	   end,
     {base64:decode(PeerId),
+     Type,
      get_json_dict_val(ip, JSON),
      get_json_dict_val(port, JSON)}.
+
+pick_randomly(_, 0) -> [];
+pick_randomly([], _) -> [];
+pick_randomly(List, NToPick) ->
+    E = lists:nth(random:uniform(length(List)), List),
+    List2 = lists:delete(E, List),
+    [E | pick_randomly(List2, NToPick - 1)].

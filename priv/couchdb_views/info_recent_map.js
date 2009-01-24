@@ -18,4 +18,23 @@ function(doc)
     doc.comments = doc.comments.length;
     emit([name, "comment"], doc);
   }
+  else if (doc._id.indexOf("tracker:") == 0)
+  {
+    var id = doc._id.substr(8);
+    doc._id = {
+      "tracker": id
+    };
+    doc.seeders = 0;
+    doc.leechers = 0;
+    for(var p in doc.peers)
+    {
+      var peer = doc.peers[p];
+      if (peer.left == 0)
+	doc.seeders++;
+      else
+	doc.leechers++;
+    }
+    doc.peers = null;
+    emit([id, "tracker"], doc); // <- reduce?
+  }
 }

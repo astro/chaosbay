@@ -239,6 +239,15 @@ request(Req, 'GET', "announce") ->
 			 end;
 		     false -> 0
 		 end,
+    Left = case lists:keysearch("left", 1, QS) of
+	       {value, {_, Left1}} -> 
+		   case string:to_integer(Left1) of
+		       {Left2, _} when is_integer(Left2) ->
+				 Left2;
+			     _ -> 1
+			 end;
+		     false -> 1
+		 end,
     Event = case lists:keysearch("event", 1, QS) of
 		     {value, {_, Event1}} -> list_to_binary(Event1);
 		     false -> <<"empty">>
@@ -247,18 +256,21 @@ request(Req, 'GET', "announce") ->
     Result =
 	torrent:tracker_request(InfoHash, PeerId2,
 				Req:get(peer), Port2,
-				Uploaded, Downloaded, Event),
+				Uploaded, Downloaded, Left, Event),
     Reply =
 	case Result of
 	    not_found ->
 		[{<<"failure reason">>, <<"No torrent registered for info_hash">>, <<0>>}];
 	    {peers, Peers} ->
+		PeersReply = 
+%% 		    case lists:keysearch("compact", 1, QS) of
+%% 			"1" ->
+		    [[{<<"peer id">>, PeerId, <<0>>},
+		      {<<"ip">>, IP, <<0>>},
+		      {<<"port">>, Port, <<0>>}]
+		     || {PeerId, IP, Port} <- Peers],
 		[{<<"interval">>, 10, <<0>>},
-		 {<<"peers">>, [[{<<"peer id">>, PeerId, <<0>>},
-				 {<<"ip">>, IP, <<0>>},
-				 {<<"port">>, Port, <<0>>}]
-				|| {PeerId, IP, Port} <- Peers],
-		  <<0>>}]
+		 {<<"peers">>, PeersReply, <<0>>}]
 	end,
     Bencoded = benc:to_binary(Reply),
     Req:ok({"application/x-bittorrent",
