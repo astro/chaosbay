@@ -20,6 +20,7 @@ ensure_started(App) ->
 start() ->
     chaosbay_deps:ensure(),
     ensure_started(crypto),
+    ensure_started(mnesia),
     application:start(chaosbay).
 
 %% @spec stop() -> ok

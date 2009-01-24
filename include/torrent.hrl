@@ -1,7 +1,9 @@
 -record(torrent, {name,
-		  id,
+		  hash_id,
 		  length,
 		  category = "Other",
 		  date = 0,
-		  parsed,
+		  comments,
 		  binary = <<>>}).
+
+-record(comment, {date, text}).

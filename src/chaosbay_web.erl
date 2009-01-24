@@ -9,7 +9,6 @@
 -export([start/1, stop/0, loop/1]).
 
 -include("../include/torrent.hrl").
--include("../include/comment.hrl").
 
 %% External API
 
@@ -44,13 +43,11 @@ request(Req, 'GET', "add") ->
   <input type='file' name='file' accept='application/x-bittorrent' maxlength='524288'/>
   <input type='submit' value='Add'/>
 </form>
-<h3>Tracker information will be added automatically!</h2>
+<h3>Tracker information will be replaced automatically!</h2>
 <p class='note'>
-I <b>prepend</b> our own tracker in your file. That enables me
-to get numbers of Seeders &amp; Leechers faster. If you still
-need a tracker, use:
+I <b>insert</b> our own tracker in your file. That enables me
+to get numbers of Seeders &amp; Leechers faster.
 </p>
-<pre>http://chaosbay.congress.ccc.de:6969/announce</pre>
 <h3>Please leech the files first.</h3>
 <p class='note'>
 It's kinda stupid without any seeders.
@@ -85,8 +82,7 @@ request(Req, 'POST', "add") ->
     end;
 
 request(Req, 'GET', "") ->
-    Torrents = torrent:recent(1000),
-    TorrentsScraped = torrents_with_scrapes(Torrents),
+    Torrents = torrent:recent(),
     HTML =
 	[{img, [{"src", "/static/chaosbay.png"}], []},
 	 {table, [{"border", "1"}],
@@ -101,9 +97,13 @@ request(Req, 'GET', "") ->
 		 {th, [{"title", "Leechers"}],
 		  ["L"]}
 		]}
-	   | lists:map(fun({#torrent{name = Name,
-				     length = Length,
-				     date = Date}, S, L, Class, C}) ->
+	   | lists:map(fun(#torrent{name = Name,
+				    length = Length,
+				    date = Date,
+				    comments = Comments}) ->
+						%, S, L, Class, C
+			       {S,L,C}={"?","?",integer_to_list(Comments)},
+			       Class = "",
 			       LinkDetails = link_to_details(Name),
 			       LinkTorrent = link_to_torrent(Name),
 			       {tr, [{"class", Class}],
@@ -122,7 +122,7 @@ request(Req, 'GET', "") ->
 				 {td, [S]},
 				 {td, [L]}
 				]}
-		       end, TorrentsScraped)]}],
+		       end, Torrents)]}],
     Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
 		   
@@ -139,7 +139,7 @@ request(Req, Method, "comments/" ++ Name)
 	Method =:= 'POST' ->
 	    Posted = Req:parse_post(),
 	    {value, {_, Text}} = lists:keysearch("text", 1, Posted),
-	    comment:add(Name, Text);
+	    torrent:add_comment(Name, Text);
 	true -> no_post
     end,
 
@@ -153,7 +153,7 @@ request(Req, Method, "comments/" ++ Name)
 					    " ago"])]},
 			  {pre, [Text]}],
 		     lists:map(fun html:to_iolist/1, HTML)
-	     end, comment:get_comments(Name)),
+	     end, torrent:get_comments(Name)),
     Req:ok({"text/html",
 	    [Body, <<"
 <h3>Post</h3>
@@ -175,27 +175,15 @@ request(Req, 'GET', {download, Name}) ->
 
 request(Req, 'GET', {details, Name}) ->
     case torrent:get_torrent_by_name(Name) of
-	#torrent{id = Id,
-		 length = Length,
-		 parsed = Parsed} ->
-	    Trackers = torrent_info:get_trackers(Parsed),
-	    {S, L, D} =
-		case scrape:scrape(Trackers, Id) of
-		    {ok, Seeders, Leechers, Downloads} ->
-			{integer_to_list(Seeders),
-			 integer_to_list(Leechers),
-			 integer_to_list(Downloads)};
-		    _ ->
-			{"Unknown",
-			 "Unknown",
-			 "Unknown"}
-		end,
+	#torrent{hash_id = HashId,
+		 length = Length} ->
+	    {S, L, D} = {"?","?","?"},
 	    HTML = [{h2, [Name]},
 		    {dl, [{dt, ["Size"]},
 			  {dd, [util:human_length(Length)]},
 			  {dt, ["Info-Hash"]},
 			  {dd, [{"class", "code"}],
-			   [mochiweb_util:quote_plus(binary_to_list(Id))]},
+			   [mochiweb_util:quote_plus(binary_to_list(HashId))]},
 			  {dt, ["Seeders"]},
 			  {dd, [S]},
 			  {dt, ["Leechers"]},
@@ -207,22 +195,18 @@ request(Req, 'GET', {details, Name}) ->
 		      {a, [{"href", link_to_torrent(Name)},
 			   {"rel", "enclosure"}],
 		       [Name]}]},
-		    {h2, ["Contents"]},
-		    {table,
-		     [{tr, [{th, ["Path"]},
-			    {th, ["Size"]}]}
-		      | [{tr, [{td, [FileName]},
-			       {td, [util:human_length(FileLength)]}]}
-			 || {FileName, FileLength} <- torrent_info:get_files(Parsed)]]},
-		    {h2, ["Trackers"]},
-		    {ul,
-		     [{li, [{"class", "code"}],
-		       [Tracker]}
-		      || Tracker <- torrent_info:get_trackers(Parsed)]},
+%% 		    {h2, ["Contents"]},
+%% 		    {table,
+%% 		     [{tr, [{th, ["Path"]},
+%% 			    {th, ["Size"]}]}
+%% 		      | [{tr, [{td, [FileName]},
+%% 			       {td, [util:human_length(FileLength)]}]}
+%% 			 || {FileName, FileLength} <- torrent_info:get_files(Parsed)]]},
 		    {h2, ["Comments"]},
 		    {'div', [{"id", "comments"}],
 		     [{p, ["Sorry, I were not able to resist the urge to do this with JavaScript"]}]}
 		    ],
+	    io:format("HTML: ~p~n",[HTML]),
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
 	not_found ->
@@ -260,7 +244,7 @@ html_ok(Req, Body) ->
 ">>, Body, <<"
     </div>
     <p id='foot'>
-— Powered by mochiweb &amp; opentracker —
+— Powered by mochiweb &amp; couchdb —
 <br/>
 Running on ">>,
 	     case nodes(visible) of
@@ -287,33 +271,3 @@ link_to_torrent(Name) when is_binary(Name) ->
 link_to_torrent(Name) ->
     "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
 
-torrents_with_scrapes(Torrents) ->
-    F = fun() ->
-		lists:map(
-		  fun(#torrent{name = Name} = Torrent) ->
-			  Comments = comment:get_comments(Name),
-			  {Torrent, length(Comments)}
-		  end, Torrents)
-	end,
-    {atomic, TorrentsWithComments} = mnesia:transaction(F),
-    util:pmap(
-      fun({#torrent{id = Id,
-		    parsed = Parsed} = Torrent, C}) ->
-	      CS = integer_to_list(C),
-	      Trackers = torrent_info:get_trackers(Parsed),
-	      {S, L, Class} = case scrape:scrape(Trackers, Id) of
-				  {ok, 0, 0, _} ->
-				      {"0", "0", "dead"};
-				  {ok, 0, L1, _} ->
-				      {"0",
-				       integer_to_list(L1),
-				       "starving"};
-				  {ok, S1, L1, _} ->
-				      {integer_to_list(S1),
-				       integer_to_list(L1),
-				       ""};
-				  _ ->
-				      {"?", "?", "dead"}
-			      end,
-	      {Torrent, S, L, Class, CS}
-      end, TorrentsWithComments).

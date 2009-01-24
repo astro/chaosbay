@@ -1,15 +1,15 @@
 -module(torrent).
 
--export([init/0, add/2, add_http/1, add_from_dir/1, recent/1, get_torrent_by_name/1]).
+-export([init/0, add/2, add_http/1, add_from_dir/1, recent/0, get_torrent_by_name/1, add_comment/2, get_comments/1]).
 
 -include("../include/torrent.hrl").
 
 
 init() ->
-    mnesia:create_schema([node()]),
-    mnesia:start(),
-    mnesia:create_table(torrent, [{disc_copies, node()},
-				  {attributes, record_info(fields, torrent)}]).
+    couch_lier:create_database(chaosbay, "localhost", 5984),
+    ViewsDir =
+	chaosbay_deps:local_path(["priv", "couchdb_views"]),
+    couch_view:install_from_dir(chaosbay, ViewsDir).
 
 add_http(URL) ->
     [Filename | _] = lists:reverse(string:tokens(URL, "/")),
@@ -18,6 +18,7 @@ add_http(URL) ->
 add_from_dir(Dir) ->
     {ok, Files} = file:list_dir(Dir),
     lists:map(fun(File) ->
+		      %% TODO: use strip_suffixes/2?
 			  FileLen = string:len(File),
 			  case string:rstr(File, ".torrent") of
 			      N when FileLen > 8, N == FileLen - 7 ->
@@ -30,63 +31,161 @@ add_from_dir(Dir) ->
 			  end
 		  end, Files).
 
-add(Filename, Upload) when is_list(Filename) ->
-    add(list_to_binary(Filename), Upload);
+add(Filename, Upload) when is_binary(Filename) ->
+    add(binary_to_list(Filename), Upload);
 
 add(Filename, Upload) ->
-    NewFilename = case split_binary(Filename, size(Filename) - 8) of
-		      {FN, <<".torrent">>} -> FN;
-		      _ -> Filename
-		  end,
+    NewFilename = strip_suffixes(Filename, ".torrent"),
     ParsedFile = benc:parse(Upload),
-    %%Body = io_lib:format("<pre>file: ~s (~s)~n~p</pre>",[FileName, FileType, ParsedFile]),
-    Id = torrent_info:info_hash(ParsedFile),
+    HashId = torrent_info:info_hash(ParsedFile),
     Length = torrent_info:get_length(ParsedFile),
-    ParsedFile2 = torrent_info:add_trackers(ParsedFile),
+    ParsedFile2 = torrent_info:set_tracker(ParsedFile),
     Binary = benc:to_binary(ParsedFile2),
     Torrent = #torrent{name = NewFilename,
-		       id = Id,
+		       hash_id = HashId,
 		       length = Length,
 		       date = util:mk_timestamp(),
-		       parsed = ParsedFile2,
 		       binary = Binary},
+    {JSON_Info, JSON_Torrent} = J = torrent_to_json(Torrent),
+    io:format("J: ~p~n",[J]),
     F = fun() ->
-		mnesia:write_lock_table(torrent),
-		case mnesia:read({torrent, NewFilename}) of
-		    [] ->
-			mnesia:write(Torrent),
+		case {couch_lier:read(chaosbay, "info:" ++ NewFilename),
+		      couch_lier:read(chaosbay, "torrent:" ++ NewFilename)} of
+		    {{struct, []},
+		     {struct, []}} ->
+			couch_lier:write(chaosbay, "info:" ++ NewFilename, JSON_Info),
+			couch_lier:write(chaosbay, "torrent:" ++ NewFilename, JSON_Torrent),
 			{ok, NewFilename};
 		    _ ->
 			exists
 		end
 	end,
-    {atomic, Result} = mnesia:transaction(F),
+    {atomic, Result} = couch_lier:transaction(F),
     Result.
 
-
-recent(Max) ->
-    F = fun() ->
-		S =
-		    mnesia:foldl(fun(Torrent, Result) ->
-					 sorted:insert(Result, Torrent)
-				 end,
-				 sorted:new(#torrent.date, desc, Max),
-				 torrent),
-		sorted:to_list(S)
-	end,
-    {atomic, Result} = mnesia:transaction(F),
-    Result.
+strip_suffixes(S, Suffix) ->
+    case lists:split(length(S) - length(Suffix), S) of
+	{S2, Suffix} ->
+	    strip_suffixes(S2, Suffix);
+	_ ->
+	    S
+    end.
 
 
-get_torrent_by_name(Name) when is_list(Name) ->
-    get_torrent_by_name(list_to_binary(Name));
+
+recent() ->
+    {struct, DocDict} = couch_lier:dirty_read(chaosbay, <<"_view/info/recent">>),
+    {value, {_, [{struct, RowsDict}]}} = lists:keysearch(<<"rows">>, 1, DocDict),
+    {value, {_, Torrents}} = lists:keysearch(<<"value">>, 1, RowsDict),
+    [json_to_torrent(Torrent)
+     || Torrent <- Torrents].
+
+
+get_torrent_by_name(Name) when is_binary(Name) ->
+    get_torrent_by_name(binary_to_list(Name));
 
 get_torrent_by_name(Name) ->
     F = fun() ->
-		case mnesia:read({torrent, Name}) of
-		    [Torrent] -> Torrent;
-		    [] -> not_found
+		case {couch_lier:read(chaosbay, "info:" ++ Name),
+		      couch_lier:read(chaosbay, "torrent:" ++ Name)} of
+		    {{struct, []},
+		     {struct, []}} -> not_found;
+		    {JSON_Info, JSON_Torrent} ->
+			{JSON_Info, JSON_Torrent}			
 		end
 	end,
-    {atomic, Result} = mnesia:transaction(F),
-    Result.
+    case couch_lier:transaction(F) of
+	{atomic, not_found} -> not_found;
+	{atomic, {JSON_Info,
+		  {struct, Dict_Torrent}}} ->
+	    Torrent = json_to_torrent(JSON_Info),
+	    {value, {_, Binary}} =
+		lists:keysearch(<<"data">>, 1, Dict_Torrent),
+	    Torrent#torrent{binary = base64:decode(Binary)}
+    end.
+
+
+torrent_to_json(#torrent{} = Torrent) ->
+    JSON_Info =
+	{struct, [{name, list_to_binary(Torrent#torrent.name)},
+		  {hash_id, base64:encode(Torrent#torrent.hash_id)},
+		  {length, Torrent#torrent.length},
+		  {category, list_to_binary(Torrent#torrent.category)},
+		  {date, Torrent#torrent.date}
+		 ]},
+    JSON_Torrent =
+	{struct, [{data, base64:encode(Torrent#torrent.binary)}]},
+    {JSON_Info, JSON_Torrent}.
+
+json_to_torrent({struct, Dict} = JSON) ->
+    Comments = case lists:keysearch(<<"comments">>, 1, Dict) of
+		   {value, {_, C}} when is_integer(C) -> C;
+		   _ -> unknown
+	       end,
+    #torrent{name = get_json_dict_val(name, JSON),
+	     hash_id = base64:decode(get_json_dict_val(hash_id, JSON)),
+	     length = get_json_dict_val(length, JSON),
+	     category = get_json_dict_val(category, JSON),
+	     date = get_json_dict_val(date, JSON),
+	     comments = Comments}.
+
+
+get_json_dict_val(Key, JSON) when is_atom(Key) ->
+    get_json_dict_val(atom_to_list(Key), JSON);
+get_json_dict_val(Key, JSON) when is_list(Key) ->
+    get_json_dict_val(list_to_binary(Key), JSON);
+get_json_dict_val(Key, {struct, Dict}) when is_binary(Key) ->
+    {value, {_, Value}} = lists:keysearch(Key, 1, Dict),
+    Value.
+
+
+add_comment(Name, Text) when is_binary(Name) ->
+    add_comment(binary_to_list(Name), Text);
+
+add_comment(Name, Text) when is_list(Text) ->
+    add_comment(Name, list_to_binary(Text));
+
+add_comment(Name, Text) ->
+    Now = util:mk_timestamp(),
+    F = fun() ->
+		{struct, OldDict} =
+		    case couch_lier:read(chaosbay, "comments:" ++ Name) of
+			{struct, []} ->
+			    {struct, [{<<"comments">>, []}]};
+			{struct, _Dict} = J ->
+			    J
+		    end,
+		OldComments = case lists:keysearch(<<"comments">>, 1, OldDict) of
+				  {value, {_, OldComments_}} ->
+				      OldComments_;
+				  false ->
+				      []
+			      end,
+		NewComments = OldComments ++
+		    [{struct, [{<<"date">>, Now},
+			       {<<"text">>, Text}]}],
+		NewDict = lists:keystore(<<"comments">>, 1, OldDict,
+					 {<<"comments">>, NewComments}),
+		io:format("NewDict: ~p~n",[NewDict]),
+		couch_lier:write(chaosbay, "comments:" ++ Name, {struct, NewDict})
+	end,
+    {atomic, _} = couch_lier:transaction(F).
+
+get_comments(Name) when is_binary(Name) ->
+    get_comments(binary_to_list(Name));
+
+get_comments(Name) ->
+    F = fun() ->
+		couch_lier:read(chaosbay, "comments:" ++ Name)
+	end,
+    {atomic, {struct, Dict}} = couch_lier:transaction(F),
+    case lists:keysearch(<<"comments">>, 1, Dict) of
+	{value, {_, Comments}} ->
+	    lists:map(fun json_to_comment/1, Comments);
+	false ->
+	    []
+    end.
+
+json_to_comment(JSON) ->
+    #comment{date = get_json_dict_val(date, JSON),
+	     text = get_json_dict_val(text, JSON)}.
