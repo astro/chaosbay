@@ -48,7 +48,6 @@ add(Filename, Upload) ->
 		       id = Id,
 		       length = Length,
 		       date = util:mk_timestamp(),
-		       parsed = ParsedFile2,
 		       binary = Binary},
     F = fun() ->
 		mnesia:write_lock_table(torrent),

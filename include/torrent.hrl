@@ -3,5 +3,4 @@
 		  length,
 		  category = "Other",
 		  date = 0,
-		  parsed,
 		  binary = <<>>}).
