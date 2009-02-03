@@ -322,3 +322,5 @@ pick_randomly(List, NToPick) ->
     E = lists:nth(random:uniform(length(List)), List),
     List2 = lists:delete(E, List),
     [E | pick_randomly(List2, NToPick - 1)].
+
+%% TODO: expire tracker info periodically!
