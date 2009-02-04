@@ -11,6 +11,8 @@
 -include("../include/torrent.hrl").
 -include("../include/comment.hrl").
 
+-define(TRACKER_REQUEST_INTERVAL, 60).
+
 %% External API
 
 start(Options) ->
@@ -46,11 +48,9 @@ request(Req, 'GET', "add") ->
 </form>
 <h3>Tracker information will be added automatically!</h2>
 <p class='note'>
-I <b>prepend</b> our own tracker in your file. That enables me
-to get numbers of Seeders &amp; Leechers faster. If you still
-need a tracker, use:
+I <b>replace</b> the tracker URL in your file with our own. That enables me
+to get numbers of Seeders &amp; Leechers.
 </p>
-<pre>http://chaosbay.congress.ccc.de:6969/announce</pre>
 <h3>Please leech the files first.</h3>
 <p class='note'>
 It's kinda stupid without any seeders.
@@ -85,8 +85,7 @@ request(Req, 'POST', "add") ->
     end;
 
 request(Req, 'GET', "") ->
-    Torrents = torrent:recent(1000),
-    TorrentsScraped = torrents_with_scrapes(Torrents),
+    Torrents = torrent:recent(200),
     HTML =
 	[{img, [{"src", "/static/chaosbay.png"}], []},
 	 {table, [{"border", "1"}],
@@ -101,9 +100,17 @@ request(Req, 'GET', "") ->
 		 {th, [{"title", "Leechers"}],
 		  ["L"]}
 		]}
-	   | lists:map(fun({#torrent{name = Name,
-				     length = Length,
-				     date = Date}, S, L, Class, C}) ->
+	   | lists:map(fun(#torrent{name = Name,
+				    id = Id,
+				    length = Length,
+				    date = Date}) ->
+			       {S, L} = tracker:tracker_info(Id),
+			       Class = case {S, L} of
+					   {0, 0} -> "dead";
+					   {0, _} -> "starving";
+					   {_, _} -> ""
+				       end,
+			       C = comment:get_comments_count(Name),
 			       LinkDetails = link_to_details(Name),
 			       LinkTorrent = link_to_torrent(Name),
 			       {tr, [{"class", Class}],
@@ -115,14 +122,14 @@ request(Req, 'GET', "") ->
 				 {td, [util:human_length(Length)]},
 				 {td, [util:human_duration(util:mk_timestamp() - Date)]},
 				 {td, [{"style", if
-						     C == "0" -> "color: #aaa";
+						     C == 0 -> "color: #aaa";
 						     true -> "font-weight:bold"
 						 end}],
-				  [C]},
-				 {td, [S]},
-				 {td, [L]}
+				  [integer_to_list(C)]},
+				 {td, [integer_to_list(S)]},
+				 {td, [integer_to_list(L)]}
 				]}
-		       end, TorrentsScraped)]}],
+		       end, Torrents)]}],
     Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
 		   
@@ -164,6 +171,65 @@ request(Req, Method, "comments/" ++ Name)
 </form>
 ">>]});
 
+request(Req, 'GET', "announce") ->
+    QS = Req:parse_qs(),
+    io:format("announce from ~p: ~p~n", [Req:get(peer), QS]),
+    {value, {_, InfoHash1}} = lists:keysearch("info_hash", 1, QS),
+    InfoHash = list_to_binary(InfoHash1),
+    {value, {_, PeerId1}} = lists:keysearch("peer_id", 1, QS),
+    PeerId = list_to_binary(PeerId1),
+    Reply =
+	case lists:keysearch("event", 1, QS) of
+	    {value, {_, "stopped"}} ->
+		tracker:tracker_request_stopped(InfoHash, PeerId),
+		[{<<"ok">>, <<"true">>, <<0>>}];
+	    
+	    _ ->
+		{value, {_, Port1}} = lists:keysearch("port", 1, QS),
+		{Port, []} = string:to_integer(Port1),
+		Uploaded = case lists:keysearch("uploaded", 1, QS) of
+			       {value, {_, Uploaded1}} ->
+				   case string:to_integer(Uploaded1) of
+				       {Uploaded2, _} when is_integer(Uploaded2) ->
+					   Uploaded2;
+				       _ -> 0
+				   end;
+			       false -> 0
+			   end,
+		Downloaded = case lists:keysearch("downloaded", 1, QS) of
+				 {value, {_, Downloaded1}} -> 
+				     case string:to_integer(Downloaded1) of
+					 {Downloaded2, _} when is_integer(Downloaded2) ->
+					     Downloaded2;
+					 _ -> 0
+				     end;
+				 false -> 0
+			     end,
+		{value, {_, Left1}} = lists:keysearch("left", 1, QS),
+		{Left, _} = string:to_integer(Left1),
+		IP = list_to_binary(Req:get(peer)),
+		Result =
+		    tracker:tracker_request(InfoHash, PeerId,
+					    IP, Port,
+					    Uploaded, Downloaded, Left),
+		case Result of
+		    not_found ->
+			[{<<"failure reason">>, <<"No torrent registered for info_hash">>, <<0>>}];
+		    {peers, Peers} ->
+			[{<<"interval">>, ?TRACKER_REQUEST_INTERVAL, <<0>>},
+			 {<<"peers">>, [[{<<"peer id">>, PeerPeerId, <<0>>},
+					 {<<"ip">>, PeerIP, <<0>>},
+					 {<<"port">>, PeerPort, <<0>>}]
+					|| {PeerPeerId, PeerIP, PeerPort} <- Peers],
+			  <<0>>}]
+		end
+	end,
+    error_logger:info_msg("Announce reply: ~p~n",[Reply]),
+    Bencoded = benc:to_binary(Reply),
+    Req:ok({"application/x-bittorrent",
+	    Bencoded});
+
+
 request(Req, 'GET', {download, Name}) ->
     case torrent:get_torrent_by_name(Name) of
 	#torrent{binary = Binary} ->
@@ -179,11 +245,7 @@ request(Req, 'GET', {details, Name}) ->
 		 length = Length,
 		 binary = Binary} ->
 	    Parsed = benc:parse(Binary),
-	    Trackers = torrent_info:get_trackers(Parsed),
-	    {S, L, D} =
-		{"Unknown",
-		 "Unknown",
-		 "Unknown"},
+	    {S, L} = tracker:tracker_info(Id),
 	    HTML = [{h2, [Name]},
 		    {dl, [{dt, ["Size"]},
 			  {dd, [util:human_length(Length)]},
@@ -191,11 +253,9 @@ request(Req, 'GET', {details, Name}) ->
 			  {dd, [{"class", "code"}],
 			   [mochiweb_util:quote_plus(binary_to_list(Id))]},
 			  {dt, ["Seeders"]},
-			  {dd, [S]},
+			  {dd, [integer_to_list(S)]},
 			  {dt, ["Leechers"]},
-			  {dd, [L]},
-			  {dt, ["Downloaded"]},
-			  {dd, [D]}]},
+			  {dd, [integer_to_list(L)]}]},
 		    {p, [{"class", "important"}],
 		     ["Download ",
 		      {a, [{"href", link_to_torrent(Name)},
@@ -208,11 +268,6 @@ request(Req, 'GET', {details, Name}) ->
 		      | [{tr, [{td, [FileName]},
 			       {td, [util:human_length(FileLength)]}]}
 			 || {FileName, FileLength} <- torrent_info:get_files(Parsed)]]},
-		    {h2, ["Trackers"]},
-		    {ul,
-		     [{li, [{"class", "code"}],
-		       [Tracker]}
-		      || Tracker <- torrent_info:get_trackers(Parsed)]},
 		    {h2, ["Comments"]},
 		    {'div', [{"id", "comments"}],
 		     [{p, ["Sorry, I were not able to resist the urge to do this with JavaScript"]}]}
@@ -281,18 +336,8 @@ link_to_torrent(Name) when is_binary(Name) ->
 link_to_torrent(Name) ->
     "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
 
-torrents_with_scrapes(Torrents) ->
-    F = fun() ->
-		lists:map(
-		  fun(#torrent{name = Name} = Torrent) ->
-			  Comments = comment:get_comments(Name),
-			  {Torrent, length(Comments)}
-		  end, Torrents)
-	end,
-    {atomic, TorrentsWithComments} = mnesia:transaction(F),
-    util:pmap(
-      fun({#torrent{id = Id} = Torrent, C}) ->
-	      CS = integer_to_list(C),
-	      {S, L, Class} = {"?", "?", "dead"},
-	      {Torrent, S, L, Class, CS}
-      end, TorrentsWithComments).
+tracker_stats_for_torrents(Torrents) ->
+    lists:map(fun(#torrent{id = Id} = Torrent) ->
+		      {S, L} = tracker:tracker_info(Id),
+		      {Torrent, S, L}
+	      end, Torrents).
