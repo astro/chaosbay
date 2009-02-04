@@ -1,6 +1,9 @@
 -module(torrent).
 
--export([init/0, add/2, add_http/1, add_from_dir/1, recent/1, get_torrent_by_name/1]).
+-export([init/0,
+	 add/2, add_http/1, add_from_dir/1,
+	 recent/1,
+	 get_torrent_by_name/1, torrent_name_by_id_t/1]).
 
 -include("../include/torrent.hrl").
 
@@ -8,8 +11,10 @@
 init() ->
     mnesia:create_schema([node()]),
     mnesia:start(),
-    mnesia:create_table(torrent, [{disc_copies, node()},
-				  {attributes, record_info(fields, torrent)}]).
+    util:safe_mnesia_create_table(torrent, [{disc_copies, [node()]},
+				  {attributes, record_info(fields, torrent)}]),
+    mnesia:add_table_index(torrent, id).
+
 
 add_http(URL) ->
     [Filename | _] = lists:reverse(string:tokens(URL, "/")),
@@ -42,7 +47,7 @@ add(Filename, Upload) ->
     %%Body = io_lib:format("<pre>file: ~s (~s)~n~p</pre>",[FileName, FileType, ParsedFile]),
     Id = torrent_info:info_hash(ParsedFile),
     Length = torrent_info:get_length(ParsedFile),
-    ParsedFile2 = torrent_info:add_trackers(ParsedFile),
+    ParsedFile2 = torrent_info:set_tracker(ParsedFile),
     Binary = benc:to_binary(ParsedFile2),
     Torrent = #torrent{name = NewFilename,
 		       id = Id,
@@ -89,3 +94,11 @@ get_torrent_by_name(Name) ->
 	end,
     {atomic, Result} = mnesia:transaction(F),
     Result.
+
+
+torrent_name_by_id_t(Id) ->
+    case mnesia:index_read(torrent, Id, #torrent.id) of
+	[] -> not_found;
+	[#torrent{name = Name}] -> {ok, Name}
+    end.
+

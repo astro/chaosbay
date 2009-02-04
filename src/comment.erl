@@ -1,13 +1,13 @@
 -module(comment).
 
--export([init/0, add/2, get_comments/1]).
+-export([init/0, add/2, get_comments/1, get_comments_count/1]).
 
 -include("../include/comment.hrl").
 
 
 init() ->
-    mnesia:create_table(comment, [{type, bag},
-				  {disc_copies, node()},
+    util:safe_mnesia_create_table(comment, [{type, bag},
+				  {disc_copies, [node()]},
 				  {attributes, record_info(fields, comment)}]).
 
 add(Name, Text) when is_list(Name) ->
@@ -37,3 +37,7 @@ get_comments(Name) ->
 			    sorted:insert(S, C)
 		    end, sorted:new(#comment.date, asc, unlimited), Comments),
     sorted:to_list(S).
+
+
+get_comments_count(Name) ->
+    length(get_comments(Name)).
