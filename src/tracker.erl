@@ -28,7 +28,7 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 			Speed = case mnesia:read({peer, {HashId, PeerId}}) of
 				    [#peer{downloaded = DownloadedOld,
 					   last = LastOld}] ->
-					(DownloadedOld - DownloadedOld) / (LastOld - Now);
+					(DownloadedOld - Downloaded) / (LastOld - Now);
 				    [] ->
 					0
 				end,
@@ -86,13 +86,15 @@ tracker_request_stopped(HashId, PeerId) ->
 
 tracker_info(HashId) ->
     Peers = dirty_hash_peers(HashId),
-    {Seeders, Leechers} =
-	lists:foldl(fun(#peer{left = 0}, {S, L}) ->
-			    {S + 1, L};
-		       (#peer{left = PeerLeft}, {S, L}) when PeerLeft > 0 ->
-			    {S, L + 1}
-		    end, {0, 0}, Peers),
-    {Seeders, Leechers}.
+    {Seeders, Leechers, Speed} =
+	lists:foldl(fun(#peer{left = 0,
+			      speed = PeerSpeed}, {S, L, Speed}) ->
+			    {S + 1, L, Speed + PeerSpeed};
+		       (#peer{left = PeerLeft,
+			      speed = PeerSpeed}, {S, L, Speed}) when PeerLeft > 0 ->
+			    {S, L + 1, Speed + PeerSpeed}
+		    end, {0, 0, 0}, Peers),
+    {Seeders, Leechers, Speed}.
 
 
 dirty_hash_peers(HashId) ->

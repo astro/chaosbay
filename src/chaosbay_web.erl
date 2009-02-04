@@ -98,13 +98,14 @@ request(Req, 'GET', "") ->
 		 {th, [{"title", "Seeders"}],
 		  ["S"]},
 		 {th, [{"title", "Leechers"}],
-		  ["L"]}
+		  ["L"]},
+		 {th, ["Speed"]}
 		]}
 	   | lists:map(fun(#torrent{name = Name,
 				    id = Id,
 				    length = Length,
 				    date = Date}) ->
-			       {S, L} = tracker:tracker_info(Id),
+			       {S, L, Speed} = tracker:tracker_info(Id),
 			       Class = case {S, L} of
 					   {0, 0} -> "dead";
 					   {0, _} -> "starving";
@@ -127,7 +128,8 @@ request(Req, 'GET', "") ->
 						 end}],
 				  [integer_to_list(C)]},
 				 {td, [integer_to_list(S)]},
-				 {td, [integer_to_list(L)]}
+				 {td, [integer_to_list(L)]},
+				 {td, [util:human_bandwidth(Speed)]}
 				]}
 		       end, Torrents)]}],
     Body = lists:map(fun html:to_iolist/1, HTML),
@@ -245,7 +247,7 @@ request(Req, 'GET', {details, Name}) ->
 		 length = Length,
 		 binary = Binary} ->
 	    Parsed = benc:parse(Binary),
-	    {S, L} = tracker:tracker_info(Id),
+	    {S, L, Speed} = tracker:tracker_info(Id),
 	    HTML = [{h2, [Name]},
 		    {dl, [{dt, ["Size"]},
 			  {dd, [util:human_length(Length)]},
@@ -255,7 +257,10 @@ request(Req, 'GET', {details, Name}) ->
 			  {dt, ["Seeders"]},
 			  {dd, [integer_to_list(S)]},
 			  {dt, ["Leechers"]},
-			  {dd, [integer_to_list(L)]}]},
+			  {dd, [integer_to_list(L)]},
+			  {dt, ["Current total download speed"]},
+			  {dd, [util:human_bandwidth(Speed)]}
+			 ]},
 		    {p, [{"class", "important"}],
 		     ["Download ",
 		      {a, [{"href", link_to_torrent(Name)},
