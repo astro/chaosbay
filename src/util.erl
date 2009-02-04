@@ -1,10 +1,17 @@
 -module(util).
 
--export([mk_timestamp/0, human_length/1, human_bandwidth/1, human_duration/1, pmap/2, timeout/2, safe_mnesia_create_table/2]).
+-export([mk_timestamp/0, mk_timestamp_us/0,
+	 human_length/1, human_bandwidth/1, human_duration/1,
+	 timestamp_to_iso8601/1,
+	 pmap/2, timeout/2, safe_mnesia_create_table/2]).
 
 mk_timestamp() ->
     {MS, S, _} = erlang:now(),
     MS * 1000000 + S.
+
+mk_timestamp_us() ->
+    {MS, S, SS} = erlang:now(),
+    (MS * 1000000 + S) * 1000000 + SS.
 
 
 -define(UPPER_READABLE_LIMIT, 1024).
@@ -45,6 +52,14 @@ human_duration1(D) when D >= 60 ->
 
 human_duration1(D) ->
     io_lib:format("~Bs", [D]).
+
+
+timestamp_to_iso8601(TS) ->
+    Now = {TS div 1000000, TS rem 1000000, 0},
+    {{Y, M, D}, {Hour, Min, Sec}} = calendar:now_to_universal_time(Now),
+    list_to_binary(
+      io_lib:format("~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B+00:00",
+		    [Y, M, D, Hour, Min, Sec])).
 
 
 %% http://yarivsblog.com/articles/2008/02/08/the-erlang-challenge/
