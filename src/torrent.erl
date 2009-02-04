@@ -2,6 +2,7 @@
 
 -export([init/0,
 	 add/2, add_http/1, add_from_dir/1,
+	 reset_tracker_urls/0,
 	 recent/1,
 	 get_torrent_by_name/1, torrent_name_by_id_t/1]).
 
@@ -66,6 +67,19 @@ add(Filename, Upload) ->
 	end,
     {atomic, Result} = mnesia:transaction(F),
     Result.
+
+
+reset_tracker_urls() ->
+    F = fun() ->
+		mnesia:write_lock_table(torrent),
+		mnesia:foldl(fun(#torrent{binary = Binary} = Torrent, _) ->
+				     Parsed = benc:parse(Binary),
+				     Parsed2 = torrent_info:set_tracker(Parsed),
+				     Binary2 = benc:to_binary(Parsed2),
+				     mnesia:write(Torrent#torrent{binary = Binary2})
+			     end, 0, torrent)
+	end,
+    {atomic, _} = mnesia:transaction(F).
 
 
 recent(Max) ->
