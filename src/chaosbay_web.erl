@@ -35,10 +35,13 @@ loop(Req) ->
 		 M when M =:= 'GET'; M =:= 'HEAD' -> 'GET';
 		 M -> M
 	     end,
-    io:format("~s ~s~n", [Method, Path]),
     Path2 = lists:dropwhile(fun(C) -> C == $/ end,
 			    Path),
-    request(Req, Method, Path2).
+    T1 = util:mk_timestamp_us(),
+    Response = request(Req, Method, Path2),
+    T2 = util:mk_timestamp_us(),
+    io:format("~s [~Bus] ~s ~s~n", [Req:get(peer), T2 - T1, Method, Path]),
+    Response.
 
 
 %% Internal API
