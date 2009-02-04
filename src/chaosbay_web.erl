@@ -13,6 +13,10 @@
 
 -define(TRACKER_REQUEST_INTERVAL, 60).
 
+-define(MIME_XHTML, "application/xhtml+xml").
+-define(MIME_ATOM, "application/atom+xml").
+-define(MIME_BITTORRENT, "application/x-bittorrent").
+
 %% External API
 
 start(Options) ->
@@ -31,10 +35,13 @@ loop(Req) ->
 		 M when M =:= 'GET'; M =:= 'HEAD' -> 'GET';
 		 M -> M
 	     end,
-    io:format("~s ~s~n", [Method, Path]),
     Path2 = lists:dropwhile(fun(C) -> C == $/ end,
 			    Path),
-    request(Req, Method, Path2).
+    T1 = util:mk_timestamp_us(),
+    Response = request(Req, Method, Path2),
+    T2 = util:mk_timestamp_us(),
+    io:format("~s [~Bus] ~s ~s~n", [Req:get(peer), T2 - T1, Method, Path]),
+    Response.
 
 
 %% Internal API
@@ -43,7 +50,7 @@ request(Req, 'GET', "add") ->
     Body = <<"
 <h2>Add a .torrent file</h2>
 <form action='/add' method='POST' enctype='multipart/form-data' class='important'>
-  <input type='file' name='file' accept='application/x-bittorrent' maxlength='524288'/>
+  <input type='file' name='file' accept='">>, ?MIME_BITTORRENT, <<"' maxlength='524288'/>
   <input type='submit' value='Add'/>
 </form>
 <h3>Tracker information will be added automatically!</h2>
@@ -134,6 +141,53 @@ request(Req, 'GET', "") ->
 		       end, Torrents)]}],
     Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
+
+request(Req, 'GET', "atom") ->
+    Torrents = torrent:recent(50),
+    Atom = {feed, [{"xmlns", "http://www.w3.org/2005/Atom"}],
+	    [{title, [<<"Chaos Bay">>]}
+	     | lists:map(fun(#torrent{name = Name,
+				      id = Id,
+				      date = Date,
+				      length = Length,
+				      binary = Binary}) ->
+				 {S, L, Speed} = tracker:tracker_info(Id),
+				 LinkDetails = link_to_details(Name),
+				 LinkTorrent = link_to_torrent(Name),
+				 Date8601 = util:timestamp_to_iso8601(Date),
+				 {entry, [
+					  {title, [Name]},
+					  {id, [list_to_binary([<<"urn:chaosbay:">>, Name])]},
+					  {published, [Date8601]},
+					  {updated, [Date8601]},
+					  {link, [{"rel", "alternate"},
+						  {"type", ?MIME_XHTML},
+						  {"href", [LinkDetails]}], []},
+					  {link, [{"rel", "enclosure"},
+						  {"type", ?MIME_BITTORRENT},
+						  {"length", size(Binary)},
+						  {"href", LinkTorrent}], []},
+					  {content, [{"type", "xhtml"}],
+					   [{'div', [{"xmlns", "http://www.w3.org/1999/xhtml"}],
+					     [{dd,
+					       [{dt, [<<"Download">>]},
+						{dd, [{a, [{"href", LinkTorrent}],
+						       [list_to_binary([Name, <<".torrent">>])]}]},
+						{dt, [<<"Size">>]},
+						{dd, [util:human_length(Length)]},
+						{dt, [<<"Seeders">>]},
+						{dd, [integer_to_list(S)]},
+						{dt, [<<"Leechers">>]},
+						{dd, [integer_to_list(L)]},
+						{dt, [<<"Speed">>]},
+						{dd, [util:human_bandwidth(Speed)]}]
+					      }]}
+					   ]}
+					 ]}
+			 end, Torrents)]},
+    Body = html:to_iolist(Atom),
+    Req:ok({?MIME_ATOM,
+	    [<<"<?xml version='1.0' encoding='utf-8'?>">>, Body]});
 		   
 request(Req, 'GET', "static/" ++ Path) ->
     DocRoot = chaosbay_deps:local_path(["priv", "www"]),
@@ -228,14 +282,14 @@ request(Req, 'GET', "announce") ->
 	end,
     error_logger:info_msg("Announce reply: ~p~n",[Reply]),
     Bencoded = benc:to_binary(Reply),
-    Req:ok({"application/x-bittorrent",
+    Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
 
 
 request(Req, 'GET', {download, Name}) ->
     case torrent:get_torrent_by_name(Name) of
 	#torrent{binary = Binary} ->
-	    Req:ok({"application/x-bittorrent",
+	    Req:ok({?MIME_BITTORRENT,
 		    Binary});
 	not_found ->
 	    Req:not_found()
@@ -294,16 +348,17 @@ request(Req, 'GET', Path) ->
     end.
 
 html_ok(Req, Body) ->
-    Req:ok({"text/html",
+    Req:ok({?MIME_XHTML,
 	    [<<"<?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN' 'DTD/xhtml1-strict.dtd'>
 <html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'>
   <head>
-    <meta http-equiv='Content-Type' content='text/html; charset=UTF-8' />
+    <meta http-equiv='Content-Type' content='">>, ?MIME_XHTML, <<"; charset=UTF-8' />
     <title>Chaos Bay</title>
     <link rel='stylesheet' type='text/css' href='/static/chaosbay.css'/>
     <script type='text/javascript' src='/static/jquery-1.2.6.min.js'></script>
     <script type='text/javascript' src='/static/comments.js'></script>
+    <link rel='alternate' type='">>, ?MIME_ATOM, <<"' title='ATOM 1.0' href='/atom' />
   </head>
   <body>
     <div id='head'>
