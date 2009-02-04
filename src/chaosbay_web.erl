@@ -395,9 +395,3 @@ link_to_torrent(Name) when is_binary(Name) ->
     link_to_torrent(binary_to_list(Name));
 link_to_torrent(Name) ->
     "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
-
-tracker_stats_for_torrents(Torrents) ->
-    lists:map(fun(#torrent{id = Id} = Torrent) ->
-		      {S, L} = tracker:tracker_info(Id),
-		      {Torrent, S, L}
-	      end, Torrents).
