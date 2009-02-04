@@ -17,13 +17,19 @@ add(Name, Text) when is_list(Text) ->
     add(Name, list_to_binary(Text));
 
 add(Name, Text) ->
-    Now = util:mk_timestamp(),
-    F = fun() ->
-		mnesia:write(#comment{name = Name,
-				      date = Now,
-				      text = Text})
-	end,
-    {atomic, _} = mnesia:transaction(F).
+    case torrent:get_torrent_by_name(Name) of
+	not_found ->
+	    not_found;
+	_ ->
+	    Now = util:mk_timestamp(),
+	    F = fun() ->
+			mnesia:write(#comment{name = Name,
+					      date = Now,
+					      text = Text})
+		end,
+	    {atomic, _} = mnesia:transaction(F),
+	    ok
+    end.
 
 get_comments(Name) when is_list(Name) ->
     get_comments(list_to_binary(Name));
