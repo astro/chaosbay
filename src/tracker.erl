@@ -52,11 +52,15 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 		  end, AllPeers),
 	    NeededPeers =
 		case Left of
+		    %% Nothing left: seeder
 		    0 ->
+			%% Seeder needs only leechers
 			lists:filter(fun(#peer{left = PeerLeft}) ->
 					     PeerLeft > 0
 				     end, PeersWithoutMe);
+		    %% Something left: leecher
 		    _ ->
+			%% Leechers need leechers and seeders
 			PeersWithoutMe
 		end,
 	    SomePeers = pick_randomly(NeededPeers, ?RESPONSE_PEER_COUNT),
