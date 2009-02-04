@@ -70,7 +70,7 @@ safe_mnesia_create_table(Name, TabDef) ->
     case mnesia:create_table(Name, TabDef) of
 	{atomic, ok} ->
 	    ok;
-	{aborted, already_exists} ->
+	{aborted, {already_exists, Name}} ->
 	    error_logger:info_msg("Picked up existing database ~p", [Name]),
 	    %% TODO: check attributes
 	    ok;
