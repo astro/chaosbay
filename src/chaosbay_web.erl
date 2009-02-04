@@ -314,7 +314,7 @@ html_ok(Req, Body) ->
 ">>, Body, <<"
     </div>
     <p id='foot'>
-— Powered by mochiweb &amp; opentracker —
+— Powered by mochiweb &amp; mnesia —
 <br/>
 Running on ">>,
 	     case nodes(visible) of

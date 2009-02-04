@@ -1,2 +1,5 @@
-css tr hilight, bluescreen, comment not_found, speed
-purging
+bluescreen
+comment not_found
+speed graphing (munin?)
+configurability
+proxying whitelist
