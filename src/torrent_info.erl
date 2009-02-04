@@ -1,6 +1,6 @@
 -module(torrent_info).
 
--export([info_hash/1, get_length/1, get_files/1, add_trackers/1, get_trackers/1]).
+-export([info_hash/1, get_length/1, get_files/1, set_tracker/1]).
 
 info_hash(Torrent) ->
     {value, {_, _, <<Hash/binary>>}} = lists:keysearch(<<"info">>, 1, Torrent),
@@ -41,56 +41,11 @@ get_files(Torrent) ->
 	    end
     end.
 
-get_trackers(Torrent) ->
-    Tracker =
-	case lists:keysearch(<<"announce">>, 1, Torrent) of
-	    {value, {_, A, _}} -> A;
-	    _ -> ""
-	end,
-    Trackers =
-	case lists:keysearch(<<"announce-list">>, 1, Torrent) of
-	    {value, {_, L, _}} ->
-		L;
-	    _ -> []
-	end,
-    [Tracker | lists:append(Trackers)].
 
-%% The first tracker URL should be vanilla HTTP for legacy clients
-%% that DON'T:
-%% * support announce-lists
-%% * support UDP trackers
-%% -define(TRACKER_URLS, [<<"udp://81.163.2.20:6969/announce">>,
-%% 		       <<"udp://81.163.2.24:6969/announce">>,
-%% 		       <<"udp://81.163.2.23:6969/announce">>,
-%% 		       <<"http://81.163.2.20:6969/announce">>,
-%% 		       <<"http://81.163.2.24:6969/announce">>,
-%% 		       <<"http://81.163.2.23:6969/announce">>,
-%% 		       <<"dht://">>]).
--define(TRACKER_URLS, []).
+-define(TRACKER_URL, <<"http://localhost:8000/announce">>).
 
-add_trackers(Torrent) ->
-    add_trackers1(Torrent, ?TRACKER_URLS).
-
-add_trackers1(Torrent, []) ->
-    Torrent;
-
-add_trackers1(Torrent, [URL1 | _] = URLs) ->
-    Tracker1 =
-	case lists:keysearch(<<"announce">>, 1, Torrent) of
-	    {value, {_, A, _}} -> A;
-	    _ -> ""
-	end,
-    Trackers1 =
-	case lists:keysearch(<<"announce-list">>, 1, Torrent) of
-	    {value, {_, L, _}} ->
-		L;
-	    _ -> []
-	end,
-    %%io:format("Old annonuces: ~p~n", [[[Tracker1] | Trackers1]]),
-    Trackers = [URLs, [Tracker1] | Trackers1],
-    %%io:format("New annonuces: ~p~n", [Trackers]),
-    Torrent2 = lists:keystore(<<"announce">>, 1, Torrent,
-			      {<<"announce">>, URL1, <<0>>}),
-    Torrent3 = lists:keystore(<<"announce-list">>, 1, Torrent2,
-			      {<<"announce-list">>, Trackers, <<0>>}),
+set_tracker(Torrent1) ->
+    Torrent2 = lists:keystore(<<"announce">>, 1, Torrent1,
+			      {<<"announce">>, ?TRACKER_URL, <<0>>}),
+    Torrent3 = lists:keydelete(<<"announce-list">>, 1, Torrent2),
     Torrent3.
