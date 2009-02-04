@@ -42,7 +42,7 @@ get_files(Torrent) ->
     end.
 
 
--define(TRACKER_URL, <<"http://localhost:8000/announce">>).
+-define(TRACKER_URL, <<"http://chaosbay.hq.c3d2.de/announce">>).
 
 set_tracker(Torrent1) ->
     Torrent2 = lists:keystore(<<"announce">>, 1, Torrent1,
