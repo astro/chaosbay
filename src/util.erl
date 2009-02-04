@@ -1,6 +1,6 @@
 -module(util).
 
--export([mk_timestamp/0, human_length/1, human_duration/1, pmap/2, timeout/2]).
+-export([mk_timestamp/0, human_length/1, human_duration/1, pmap/2, timeout/2, safe_mnesia_create_table/2]).
 
 mk_timestamp() ->
     {MS, S, _} = erlang:now(),
@@ -63,4 +63,16 @@ timeout(Fun, Timeout) ->
     after Timeout ->
 	    exit(Pid, timeout),
 	    exit(timeout)
+    end.
+
+
+safe_mnesia_create_table(Name, TabDef) ->
+    case mnesia:create_table(Name, TabDef) of
+	{atomic, ok} ->
+	    ok;
+	{aborted, already_exists} ->
+	    error_logger:info_msg("Picked up existing database ~p", [Name]),
+	    %% TODO: check attributes
+	    ok;
+	E -> exit(E)
     end.
