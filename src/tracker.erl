@@ -1,6 +1,7 @@
 -module(tracker).
 
--export([init/0, tracker_request/7, tracker_request_stopped/2, tracker_info/1]).
+-export([init/0, tracker_request/7, tracker_request_stopped/2, tracker_info/1,
+	 cleaner_start_link/0, cleaner_loop/0]).
 
 
 -record(peer, {hash_peer,
@@ -107,3 +108,38 @@ pick_randomly(List, NToPick) ->
     E = lists:nth(random:uniform(length(List)), List),
     List2 = lists:delete(E, List),
     [E | pick_randomly(List2, NToPick - 1)].
+
+
+%%% CLEANER
+
+-define(CLEAN_INTERVAL, 1800).
+-define(PEER_MAX_AGE, ?CLEAN_INTERVAL * 3).
+
+cleaner_start_link() ->
+    Pid = spawn_link(fun cleaner_loop/0),
+    {ok, Pid}.
+
+cleaner_loop() ->
+    Now = util:mk_timestamp(),
+    MinLast = Now - ?PEER_MAX_AGE,
+    F = fun() ->
+		mnesia:write_lock_table(peer),
+		ObsoletePeers =
+		    mnesia:select(peer,
+				  [{#peer{last = '$1',
+					  _ = '_'},
+				    [{'<', '$1', {const, MinLast}}],
+				    ['$_']}]),
+		lists:foreach(fun mnesia:delete_object/1, ObsoletePeers),
+		length(ObsoletePeers)
+	end,
+    {atomic, N} = mnesia:transaction(F),
+    error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
+
+    %% Sleep
+    receive
+    after ?CLEAN_INTERVAL * 1000 ->
+	    ok
+    end,
+    %% Repeat
+    ?MODULE:cleaner_loop().
