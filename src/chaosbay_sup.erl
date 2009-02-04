@@ -51,6 +51,9 @@ init([]) ->
     Web = {chaosbay_web,
            {chaosbay_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
+    TrackerCleaner = {tracker_cleaner,
+		      {tracker, cleaner_start_link, []},
+		      permanent, 5000, worker, [tracker]},
 
-    Processes = [Web],
+    Processes = [Web, TrackerCleaner],
     {ok, {{one_for_one, 10, 10}, Processes}}.

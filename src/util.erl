@@ -1,23 +1,34 @@
 -module(util).
 
--export([mk_timestamp/0, human_length/1, human_duration/1, pmap/2, timeout/2, safe_mnesia_create_table/2]).
+-export([mk_timestamp/0, human_length/1, human_bandwidth/1, human_duration/1, pmap/2, timeout/2, safe_mnesia_create_table/2]).
 
 mk_timestamp() ->
     {MS, S, _} = erlang:now(),
     MS * 1000000 + S.
 
 
+-define(UPPER_READABLE_LIMIT, 1024).
+
+divide_until_readable(I) ->
+    divide_until_readable1(I, ["", "K", "M", "G", "T", "P", "E"]).
+
+divide_until_readable1(I, [U]) ->
+    {I, U};
+divide_until_readable1(I, [_ | R]) when I > ?UPPER_READABLE_LIMIT ->
+    divide_until_readable1(I / 1024, R);
+divide_until_readable1(I, [U | _]) ->
+    {I, U}.
+
+
 human_length(L) ->
-    list_to_binary(human_length1(L)).
+    {I, U} = divide_until_readable(L),
+    S = io_lib:format("~.1f~sB", [I / 1.0, U]),
+    list_to_binary(S).
 
-human_length1(L) when L > 1024 * 1024 * 1024 ->
-    io_lib:format("~.1fG", [L / (1024 * 1024 * 1024)]);
-
-human_length1(L) when L > 1024 * 1024 ->
-    io_lib:format("~.1fM", [L / (1024 * 1024)]);
-
-human_length1(L) ->
-    io_lib:format("~.1fK", [L / 1024]).
+human_bandwidth(B) ->
+    {I, U} = divide_until_readable(B),
+    S = io_lib:format("~.1f~sB/s", [I / 1.0, U]),
+    list_to_binary(S).
 
 
 human_duration(D) ->
@@ -70,7 +81,7 @@ safe_mnesia_create_table(Name, TabDef) ->
     case mnesia:create_table(Name, TabDef) of
 	{atomic, ok} ->
 	    ok;
-	{aborted, already_exists} ->
+	{aborted, {already_exists, Name}} ->
 	    error_logger:info_msg("Picked up existing database ~p", [Name]),
 	    %% TODO: check attributes
 	    ok;
