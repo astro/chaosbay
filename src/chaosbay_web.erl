@@ -145,7 +145,11 @@ request(Req, 'GET', "") ->
 request(Req, 'GET', "atom") ->
     Torrents = torrent:recent(50),
     Atom = {feed, [{"xmlns", "http://www.w3.org/2005/Atom"}],
-	    [{title, [<<"Chaos Bay">>]}
+	    [{title, [<<"Chaos Bay">>]},
+	     {id, [<<"/">>]},
+	     {link, [{"rel", "self"},
+		     {"type", ?MIME_ATOM},
+		     {"href", "/atom"}], []}
 	     | lists:map(fun(#torrent{name = Name,
 				      id = Id,
 				      date = Date,
@@ -157,7 +161,7 @@ request(Req, 'GET', "atom") ->
 				 Date8601 = util:timestamp_to_iso8601(Date),
 				 {entry, [
 					  {title, [Name]},
-					  {id, [list_to_binary([<<"urn:chaosbay:">>, Name])]},
+					  {id, [LinkTorrent]},
 					  {published, [Date8601]},
 					  {updated, [Date8601]},
 					  {link, [{"rel", "alternate"},
@@ -169,7 +173,7 @@ request(Req, 'GET', "atom") ->
 						  {"href", LinkTorrent}], []},
 					  {content, [{"type", "xhtml"}],
 					   [{'div', [{"xmlns", "http://www.w3.org/1999/xhtml"}],
-					     [{dd,
+					     [{dl,
 					       [{dt, [<<"Download">>]},
 						{dd, [{a, [{"href", LinkTorrent}],
 						       [list_to_binary([Name, <<".torrent">>])]}]},
