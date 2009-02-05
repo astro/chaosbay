@@ -53,7 +53,7 @@ request(Req, 'GET', "add") ->
   <input type='file' name='file' accept='">>, ?MIME_BITTORRENT, <<"' maxlength='524288'/>
   <input type='submit' value='Add'/>
 </form>
-<h3>Tracker information will be added automatically!</h2>
+<h3>Tracker information will be set automatically!</h3>
 <p class='note'>
 I <b>replace</b> the tracker URL in your file with our own. That enables me
 to get numbers of Seeders &amp; Leechers.
