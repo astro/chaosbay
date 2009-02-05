@@ -31,7 +31,7 @@ stop() ->
 
 
 absolute_path(Path) ->
-    case application:get_env(http_base) of
+    case application:get_env(chaosbay, http_base) of
 	{ok, HttpBase} ->
 	    HttpBase ++ Path;
 	undefined ->
