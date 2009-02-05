@@ -80,7 +80,7 @@ request(Req, 'POST', "add") ->
 	    html_ok(Req, [<<"
 <h2>Very good!</h2>
 <p>Now please download our .torrent file and seed that!</p>
-<p class='important'><a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
+<p class='important'>Download <a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
 <p>Then, view <a href='">>, link_to_details(Name), <<"'>details</a>, go back to the <a href='/'>index</a> or <a href='/add'>add</a> another Torrent.</p>
 ">>]);
 	exists ->
