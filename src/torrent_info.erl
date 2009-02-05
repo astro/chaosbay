@@ -3,7 +3,9 @@
 -export([info_hash/1, get_length/1, get_files/1, set_tracker/1]).
 
 info_hash(Torrent) ->
-    {value, {_, _, <<Hash/binary>>}} = lists:keysearch(<<"info">>, 1, Torrent),
+    {value, {_, InfoDict}} = lists:keysearch(<<"info">>, 1, Torrent),
+    InfoBin = benc:to_binary(InfoDict),
+    Hash = crypto:sha(InfoBin),
     Hash.
 
 
@@ -13,14 +15,14 @@ get_length(Torrent) ->
 		end, 0, get_files(Torrent)).
 
 get_files(Torrent) ->
-    {value, {_, Info, _}} = lists:keysearch(<<"info">>, 1, Torrent),
+    {value, {_, Info}} = lists:keysearch(<<"info">>, 1, Torrent),
     case lists:keysearch(<<"files">>, 1, Info) of
 	{value, {_, Files, _}} ->
 	    lists:map(
 	      fun(File) ->
-		      {value, {_, FilePath, _}} =
+		      {value, {_, FilePath}} =
 			  lists:keysearch(<<"path">>, 1, File),
-		      {value, {_, FileLength, _}} =
+		      {value, {_, FileLength}} =
 			  lists:keysearch(<<"length">>, 1, File),
 		      {FilePath, FileLength}
 	      end, Files);
@@ -30,12 +32,12 @@ get_files(Torrent) ->
 			   _ -> <<"Unknown">>
 		       end,
 	    case lists:keysearch(<<"length">>, 1, Info) of
-		{value, {_, Length, _}} ->
+		{value, {_, Length}} ->
 		    [{FileName, Length}];
 		_ ->
-		    {value, {_, PieceLength, _}} =
+		    {value, {_, PieceLength}} =
 			lists:keysearch(<<"piece length">>, 1, Info),
-		    {value, {_, Pieces, _}} =
+		    {value, {_, Pieces}} =
 			lists:keysearch(<<"pieces">>, 1, Info),
 		    [{FileName, (size(Pieces) div 20) * PieceLength}]
 	    end
@@ -46,6 +48,6 @@ get_files(Torrent) ->
 
 set_tracker(Torrent1) ->
     Torrent2 = lists:keystore(<<"announce">>, 1, Torrent1,
-			      {<<"announce">>, ?TRACKER_URL, <<0>>}),
+			      {<<"announce">>, ?TRACKER_URL}),
     Torrent3 = lists:keydelete(<<"announce-list">>, 1, Torrent2),
     Torrent3.

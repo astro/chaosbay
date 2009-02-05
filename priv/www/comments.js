@@ -30,9 +30,12 @@ function updateComments(data, textStatus) {
 }
 
 $(document).ready(function() {
-		    $("#comments").addClass("important");
-		    $("#comments").empty();
-		    $("#comments").append("<img id='spinner' src='/static/spinner.gif'/>");
-		    $("#comments").append("<div id='comment-data'></div>");
-		    reloadComments();
+		    if ($("#comments").length)
+		    {
+		      $("#comments").addClass("important");
+		      $("#comments").empty();
+		      $("#comments").append("<img id='spinner' src='/static/spinner.gif'/>");
+		      $("#comments").append("<div id='comment-data'></div>");
+		      reloadComments();
+		    }
 		  });

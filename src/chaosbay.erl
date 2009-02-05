@@ -31,5 +31,10 @@ stop() ->
 
 
 absolute_path(Path) ->
-    {ok, HttpBase} = application:get_env(http_base),
-    HttpBase ++ Path.
+    case application:get_env(http_base) of
+	{ok, HttpBase} ->
+	    HttpBase ++ Path;
+	undefined ->
+	    error_logger:warning_msg("http_base has not been set~n"),
+	    Path
+    end.
