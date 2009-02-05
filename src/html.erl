@@ -16,17 +16,25 @@ to_iolist1({El, Children}) when is_atom(El) ->
     to_iolist1({atom_to_list(El), Children});
 
 to_iolist1({El, Children}) ->
-    [<<"<">>, El, <<">">>,
-     [to_iolist1(Child) || Child <- Children],
-     <<"</">>, El, <<">">>];
+    [<<"<">>, El,
+     case Children of
+	 [] -> <<"/>">>;
+	 _ -> [<<">">>,
+	       [to_iolist1(Child) || Child <- Children],
+	       <<"</">>, El, <<">">>]
+     end];
 
 to_iolist1({El, Attrs, Children}) when is_atom(El) ->
     to_iolist1({atom_to_list(El), Attrs, Children});
 
 to_iolist1({El, Attrs, Children}) ->
     [<<"<">>, El,
-     [[<<" ">>, K, <<"='">>, mochiweb_html:escape_attr(V), <<"'">>]
+     [[<<" ">>, K, <<"=\"">>, mochiweb_html:escape_attr(V), <<"\"">>]
       || {K, V} <- Attrs],
-     <<">">>,
-     [to_iolist1(Child) || Child <- Children],
-     <<"</">>, El, <<">">>].
+     case Children of
+	 [] -> <<"/>">>;
+	 _ ->
+	     [<<">">>,
+	      [to_iolist1(Child) || Child <- Children],
+	      <<"</">>, El, <<">">>]
+     end].
