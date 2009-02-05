@@ -47,7 +47,7 @@ loop(Req) ->
 %% Internal API
 
 request(Req, 'GET', "add") ->
-    Body = <<"
+    Body = [<<"
 <h2>Add a .torrent file</h2>
 <form action='/add' method='POST' enctype='multipart/form-data' class='important'>
   <input type='file' name='file' accept='">>, ?MIME_BITTORRENT, <<"' maxlength='524288'/>
@@ -69,7 +69,7 @@ It's kinda stupid without any seeders.
   <a href='http://claudiusmaximus.goto10.org/index.php?page=coding/buildtorrent'>buildtorrent</a>
   or <a href='http://btfaq.com/serve/cache/14.html'>many others.</a>
 </p>
-">>,
+">>],
     html_ok(Req, Body);
 
 request(Req, 'POST', "add") ->
@@ -162,7 +162,7 @@ request(Req, 'GET', "atom") ->
 				 {entry, [
 					  {title, [Name]},
 					  {id, [LinkTorrent]},
-					  {published, [Date8601]},
+					  {published, [Date8601]},  %% TODO: last tracker activity
 					  {updated, [Date8601]},
 					  {link, [{"rel", "alternate"},
 						  {"type", ?MIME_XHTML},
@@ -171,7 +171,7 @@ request(Req, 'GET', "atom") ->
 						  {"type", ?MIME_BITTORRENT},
 						  {"length", size(Binary)},
 						  {"href", LinkTorrent}], []},
-					  {content, [{"type", "xhtml"}],
+					  {summary, [{"type", "xhtml"}],
 					   [{'div', [{"xmlns", "http://www.w3.org/1999/xhtml"}],
 					     [{dl,
 					       [{dt, [<<"Download">>]},
@@ -191,7 +191,7 @@ request(Req, 'GET', "atom") ->
 			 end, Torrents)]},
     Body = html:to_iolist(Atom),
     Req:ok({?MIME_ATOM,
-	    [<<"<?xml version='1.0' encoding='utf-8'?>">>, Body]});
+	    [<<"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\n">>, Body]});
 		   
 request(Req, 'GET', "static/" ++ Path) ->
     DocRoot = chaosbay_deps:local_path(["priv", "www"]),
