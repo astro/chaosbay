@@ -53,7 +53,7 @@ request(Req, 'GET', "add") ->
   <input type='file' name='file' accept='">>, ?MIME_BITTORRENT, <<"' maxlength='524288'/>
   <input type='submit' value='Add'/>
 </form>
-<h3>Tracker information will be added automatically!</h2>
+<h3>Tracker information will be set automatically!</h3>
 <p class='note'>
 I <b>replace</b> the tracker URL in your file with our own. That enables me
 to get numbers of Seeders &amp; Leechers.
@@ -80,7 +80,7 @@ request(Req, 'POST', "add") ->
 	    html_ok(Req, [<<"
 <h2>Very good!</h2>
 <p>Now please download our .torrent file and seed that!</p>
-<p class='important'><a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
+<p class='important'>Download <a href='">>, link_to_torrent(Name), <<"'>">>, Name, <<"</a></p>
 <p>Then, view <a href='">>, link_to_details(Name), <<"'>details</a>, go back to the <a href='/'>index</a> or <a href='/add'>add</a> another Torrent.</p>
 ">>]);
 	exists ->
@@ -245,7 +245,7 @@ request(Req, 'GET', "announce") ->
 	case lists:keysearch("event", 1, QS) of
 	    {value, {_, "stopped"}} ->
 		tracker:tracker_request_stopped(InfoHash, PeerId),
-		[{<<"ok">>, <<"true">>, <<0>>}];
+		[{<<"ok">>, <<"true">>}];
 	    
 	    _ ->
 		{value, {_, Port1}} = lists:keysearch("port", 1, QS),
@@ -277,14 +277,13 @@ request(Req, 'GET', "announce") ->
 					    Uploaded, Downloaded, Left),
 		case Result of
 		    not_found ->
-			[{<<"failure reason">>, <<"No torrent registered for info_hash">>, <<0>>}];
+			[{<<"failure reason">>, <<"No torrent registered for info_hash">>}];
 		    {peers, Peers} ->
-			[{<<"interval">>, ?TRACKER_REQUEST_INTERVAL, <<0>>},
-			 {<<"peers">>, [[{<<"peer id">>, PeerPeerId, <<0>>},
-					 {<<"ip">>, PeerIP, <<0>>},
-					 {<<"port">>, PeerPort, <<0>>}]
-					|| {PeerPeerId, PeerIP, PeerPort} <- Peers],
-			  <<0>>}]
+			[{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
+			 {<<"peers">>, [[{<<"peer id">>, PeerPeerId},
+					 {<<"ip">>, PeerIP},
+					 {<<"port">>, PeerPort}]
+					|| {PeerPeerId, PeerIP, PeerPort} <- Peers]}]
 		end
 	end,
     error_logger:info_msg("Announce reply: ~p~n",[Reply]),

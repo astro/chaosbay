@@ -44,8 +44,7 @@ parse_dict(Dict, Remaining) ->
     {Key, Remaining2} = parse_value(Remaining),
     {Value, Remaining3} = parse_value(Remaining2),
     {Remaining2only, _} = split_binary(Remaining2, size(Remaining2) - size(Remaining3)),
-    Digest = crypto:sha(Remaining2only),
-    parse_dict([{Key, Value, Digest} | Dict], Remaining3).
+    parse_dict([{Key, Value} | Dict], Remaining3).
 
 %%% parse_list %%%
 
@@ -87,8 +86,8 @@ parse_str(Len, Str, <<C, Remaining/binary>>) ->
 %% Serialization
 %%%%%%%%%%%%%%%%%%%
 
-to_binary([{_, _, _} | _] = Dict) ->
-    Elements = [[to_binary(K), to_binary(V)] || {K, V, _Sha} <- Dict],
+to_binary([{_, _} | _] = Dict) ->
+    Elements = [[to_binary(K), to_binary(V)] || {K, V} <- Dict],
     Bin = list_to_binary(Elements),
     list_to_binary(["d", Bin, "e"]);
 
