@@ -245,7 +245,7 @@ request(Req, 'GET', "announce") ->
 	case lists:keysearch("event", 1, QS) of
 	    {value, {_, "stopped"}} ->
 		tracker:tracker_request_stopped(InfoHash, PeerId),
-		[{<<"ok">>, <<"true">>, <<0>>}];
+		[{<<"ok">>, <<"true">>}];
 	    
 	    _ ->
 		{value, {_, Port1}} = lists:keysearch("port", 1, QS),
@@ -277,14 +277,13 @@ request(Req, 'GET', "announce") ->
 					    Uploaded, Downloaded, Left),
 		case Result of
 		    not_found ->
-			[{<<"failure reason">>, <<"No torrent registered for info_hash">>, <<0>>}];
+			[{<<"failure reason">>, <<"No torrent registered for info_hash">>}];
 		    {peers, Peers} ->
-			[{<<"interval">>, ?TRACKER_REQUEST_INTERVAL, <<0>>},
-			 {<<"peers">>, [[{<<"peer id">>, PeerPeerId, <<0>>},
-					 {<<"ip">>, PeerIP, <<0>>},
-					 {<<"port">>, PeerPort, <<0>>}]
-					|| {PeerPeerId, PeerIP, PeerPort} <- Peers],
-			  <<0>>}]
+			[{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
+			 {<<"peers">>, [[{<<"peer id">>, PeerPeerId},
+					 {<<"ip">>, PeerIP},
+					 {<<"port">>, PeerPort}]
+					|| {PeerPeerId, PeerIP, PeerPort} <- Peers]}]
 		end
 	end,
     error_logger:info_msg("Announce reply: ~p~n",[Reply]),
