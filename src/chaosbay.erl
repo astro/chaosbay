@@ -5,7 +5,7 @@
 
 -module(chaosbay).
 -author('author <author@example.com>').
--export([start/0, stop/0]).
+-export([start/0, stop/0, absolute_path/1]).
 
 ensure_started(App) ->
     case application:start(App) of
@@ -28,3 +28,8 @@ stop() ->
     Res = application:stop(chaosbay),
     application:stop(crypto),
     Res.
+
+
+absolute_path(Path) ->
+    {ok, HttpBase} = application:get_env(http_base),
+    HttpBase ++ Path.

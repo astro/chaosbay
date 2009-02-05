@@ -146,18 +146,21 @@ request(Req, 'GET', "atom") ->
     Torrents = torrent:recent(50),
     Atom = {feed, [{"xmlns", "http://www.w3.org/2005/Atom"}],
 	    [{title, [<<"Chaos Bay">>]},
-	     {id, [<<"/">>]},
+	     {id, [chaosbay:absolute_path("/")]},
 	     {link, [{"rel", "self"},
 		     {"type", ?MIME_ATOM},
-		     {"href", "/atom"}], []}
+		     {"href", chaosbay:absolute_path("/atom")}], []},
+	     {link, [{"rel", "alternate"},
+		     {"type", ?MIME_XHTML},
+		     {"href", chaosbay:absolute_path("/")}], []}
 	     | lists:map(fun(#torrent{name = Name,
 				      id = Id,
 				      date = Date,
 				      length = Length,
 				      binary = Binary}) ->
 				 {S, L, Speed} = tracker:tracker_info(Id),
-				 LinkDetails = link_to_details(Name),
-				 LinkTorrent = link_to_torrent(Name),
+				 LinkDetails = chaosbay:absolute_path(link_to_details(Name)),
+				 LinkTorrent = chaosbay:absolute_path(link_to_torrent(Name)),
 				 Date8601 = util:timestamp_to_iso8601(Date),
 				 {entry, [
 					  {title, [Name]},
