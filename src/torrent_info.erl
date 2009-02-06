@@ -17,7 +17,7 @@ get_length(Torrent) ->
 get_files(Torrent) ->
     {value, {_, Info}} = lists:keysearch(<<"info">>, 1, Torrent),
     case lists:keysearch(<<"files">>, 1, Info) of
-	{value, {_, Files, _}} ->
+	{value, {_, Files}} ->
 	    lists:map(
 	      fun(File) ->
 		      {value, {_, FilePath}} =
@@ -28,7 +28,7 @@ get_files(Torrent) ->
 	      end, Files);
 	_ ->
 	    FileName = case lists:keysearch(<<"name">>, 1, Info) of
-			   {value, {_, Name, _}} -> Name;
+			   {value, {_, Name}} -> Name;
 			   _ -> <<"Unknown">>
 		       end,
 	    case lists:keysearch(<<"length">>, 1, Info) of
