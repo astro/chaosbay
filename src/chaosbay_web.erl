@@ -236,7 +236,7 @@ request(Req, Method, "comments/" ++ Name)
 
 request(Req, 'GET', "announce") ->
     QS = Req:parse_qs(),
-    io:format("announce from ~p: ~p~n", [Req:get(peer), QS]),
+    %%io:format("announce from ~p: ~p~n", [Req:get(peer), QS]),
     {value, {_, InfoHash1}} = lists:keysearch("info_hash", 1, QS),
     InfoHash = list_to_binary(InfoHash1),
     {value, {_, PeerId1}} = lists:keysearch("peer_id", 1, QS),
@@ -286,7 +286,7 @@ request(Req, 'GET', "announce") ->
 					|| {PeerPeerId, PeerIP, PeerPort} <- Peers]}]
 		end
 	end,
-    error_logger:info_msg("Announce reply: ~p~n",[Reply]),
+    io:format("Announce reply: ~p~n",[Reply]),
     Bencoded = benc:to_binary(Reply),
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
