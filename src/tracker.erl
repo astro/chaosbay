@@ -32,7 +32,7 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 				    [] ->
 					0
 				end,
-			io:format("New speed: ~p/s~n",[Speed]),
+			%%io:format("New speed: ~p/s~n",[Speed]),
 			mnesia:write(#peer{hash_peer = {HashId, PeerId},
 					   ip = IP, port = Port,
 					   downloaded = Downloaded, uploaded = Uploaded,
@@ -46,13 +46,13 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 	{atomic, ok} ->
 	    %% Assemble result
 	    AllPeers = dirty_hash_peers(HashId),
-		io:format("AllPeers: ~p~n", [AllPeers]),
+		%%io:format("AllPeers: ~p~n", [AllPeers]),
 	    PeersWithoutMe =
 		lists:filter(
 		  fun(#peer{hash_peer = {_, PeerPeerId}}) ->
 			  PeerId =/= PeerPeerId
 		  end, AllPeers),
-		io:format("PeersWithoutMe: ~p~n", [PeersWithoutMe]),
+		%%io:format("PeersWithoutMe: ~p~n", [PeersWithoutMe]),
 	    NeededPeers =
 		case Left of
 		    %% Nothing left: seeder
@@ -66,9 +66,9 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 			%% Leechers need leechers and seeders
 			PeersWithoutMe
 		end,
-		io:format("NeededPeers: ~p~n", [NeededPeers]),
+		%%io:format("NeededPeers: ~p~n", [NeededPeers]),
 	    SomePeers = pick_randomly(NeededPeers, ?RESPONSE_PEER_COUNT),
-		io:format("SomePeers: ~p~n", [SomePeers]),
+		%%io:format("SomePeers: ~p~n", [SomePeers]),
 
 	    %% Assemble relevant info
 	    {peers, [{PeerPeerId, PeerIP, PeerPort}
