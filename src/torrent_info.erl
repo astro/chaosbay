@@ -20,8 +20,12 @@ get_files(Torrent) ->
 	{value, {_, Files}} ->
 	    lists:map(
 	      fun(File) ->
-		      {value, {_, FilePath}} =
+		      {value, {_, PathParts}} =
 			  lists:keysearch(<<"path">>, 1, File),
+		      FilePath = list_to_binary(
+				   lists:foldl(fun(F, []) -> [F];
+						  (F, R) -> [F, $/ | R]
+					       end, [], PathParts)),
 		      {value, {_, FileLength}} =
 			  lists:keysearch(<<"length">>, 1, File),
 		      {FilePath, FileLength}
