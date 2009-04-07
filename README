@@ -1,0 +1,6 @@
+Doesn't require OpenTracker anymore, tracker data is being kept in Mnesia now.
+To configure, run:
+
+application:set_env(chaosbay, http_base, "http://...").
+torrent:reset_tracker_urls().
+
