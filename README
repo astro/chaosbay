@@ -1,4 +1,10 @@
 Doesn't require OpenTracker anymore, tracker data is being kept in Mnesia now.
+
+
+You will need MochiWeb from: http://code.google.com/p/mochiweb/
+Bind address and port may be specified by environment variables MOCHIWEB_IP and
+MOCHIWEB_PORT.
+
 To configure, run:
 
 application:set_env(chaosbay, http_base, "http://...").
