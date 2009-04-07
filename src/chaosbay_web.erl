@@ -270,7 +270,7 @@ request(Req, 'GET', "announce") ->
 			     end,
 		{value, {_, Left1}} = lists:keysearch("left", 1, QS),
 		{Left, _} = string:to_integer(Left1),
-		IP = list_to_binary(Req:get(peer)),
+		IP = list_to_binary(mangle_addr(Req:get(peer))),
 		Result =
 		    tracker:tracker_request(InfoHash, PeerId,
 					    IP, Port,
@@ -401,3 +401,8 @@ link_to_torrent(Name) when is_binary(Name) ->
     link_to_torrent(binary_to_list(Name));
 link_to_torrent(Name) ->
     "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
+
+
+mangle_addr("::FFFF:" ++ IP4) -> IP4;
+mangle_addr("::ffff:" ++ IP4) -> IP4;
+mangle_addr(IP) -> IP.
