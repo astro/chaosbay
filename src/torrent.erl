@@ -36,6 +36,9 @@ add_from_dir(Dir) ->
 			  end
 		  end, Files).
 
+add(Filename, _Upload) when Filename == ""; Filename == <<>> ->
+    invalid;
+
 add(Filename, Upload) when is_list(Filename) ->
     add(list_to_binary(Filename), Upload);
 

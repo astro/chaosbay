@@ -88,7 +88,10 @@ request(Req, 'POST', "add") ->
 <h2>Sorry</h2>
 <p class='important'>I already have this file.</p>
 <p>You might want to rename it if the contents are really different.</p>
-">>)
+">>);
+	invalid ->
+	    request(Req, 'GET', "add")
+    
     end;
 
 request(Req, 'GET', "") ->
