@@ -90,8 +90,15 @@ request(Req, 'POST', "add") ->
 <p>You might want to rename it if the contents are really different.</p>
 ">>);
 	invalid ->
-	    request(Req, 'GET', "add")
-    
+	    request(Req, 'GET', "add");
+	{error, Reason} ->
+	    %% TODO: return like 500 here
+	    ReasonS = lists:flatten(io_lib:format("~p", [Reason])),
+	    HTML =
+		[{h2, ["Invalid stuff happened"]},
+		 {p, [{"class", "important error code"}], [ReasonS]}],
+	    Body = lists:map(fun html:to_iolist/1, HTML),
+	    html_ok(Req, Body)
     end;
 
 request(Req, 'GET', "") ->
@@ -357,7 +364,10 @@ request(Req, 'GET', Path) ->
     end.
 
 html_ok(Req, Body) ->
-    Req:ok({?MIME_XHTML,
+    Req:ok(html_skeleton(Body)).
+
+html_skeleton(Body) ->
+    {?MIME_XHTML,
 	    [<<"<?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN' 'DTD/xhtml1-strict.dtd'>
 <html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'>
@@ -393,7 +403,7 @@ Running on ">>,
 <<"
     </p>
   </body>
-</html>">>]}).
+</html>">>]}.
 
 link_to_details(Name) when is_binary(Name) ->
     link_to_details(binary_to_list(Name));
