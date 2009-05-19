@@ -36,6 +36,9 @@ add_from_dir(Dir) ->
 			  end
 		  end, Files).
 
+add(Filename, _Upload) when Filename == ""; Filename == <<>> ->
+    invalid;
+
 add(Filename, Upload) when is_list(Filename) ->
     add(list_to_binary(Filename), Upload);
 
@@ -44,29 +47,32 @@ add(Filename, Upload) ->
 		      {FN, <<".torrent">>} -> FN;
 		      _ -> Filename
 		  end,
-    ParsedFile = benc:parse(Upload),
-    %%Body = io_lib:format("<pre>file: ~s (~s)~n~p</pre>",[FileName, FileType, ParsedFile]),
-    Id = torrent_info:info_hash(ParsedFile),
-    Length = torrent_info:get_length(ParsedFile),
-    ParsedFile2 = torrent_info:set_tracker(ParsedFile),
-    Binary = benc:to_binary(ParsedFile2),
-    Torrent = #torrent{name = NewFilename,
-		       id = Id,
-		       length = Length,
-		       date = util:mk_timestamp(),
-		       binary = Binary},
-    F = fun() ->
-		mnesia:write_lock_table(torrent),
-		case mnesia:read({torrent, NewFilename}) of
-		    [] ->
-			mnesia:write(Torrent),
-			{ok, NewFilename};
-		    _ ->
-			exists
-		end
-	end,
-    {atomic, Result} = mnesia:transaction(F),
-    Result.
+    case (catch benc:parse(Upload)) of
+	{'EXIT', Reason} -> {error, Reason};
+	ParsedFile ->
+	    %%Body = io_lib:format("<pre>file: ~s (~s)~n~p</pre>",[FileName, FileType, ParsedFile]),
+	    Id = torrent_info:info_hash(ParsedFile),
+	    Length = torrent_info:get_length(ParsedFile),
+	    ParsedFile2 = torrent_info:set_tracker(ParsedFile),
+	    Binary = benc:to_binary(ParsedFile2),
+	    Torrent = #torrent{name = NewFilename,
+			       id = Id,
+			       length = Length,
+			       date = util:mk_timestamp(),
+			       binary = Binary},
+	    F = fun() ->
+			mnesia:write_lock_table(torrent),
+			case mnesia:read({torrent, NewFilename}) of
+			    [] ->
+				mnesia:write(Torrent),
+				{ok, NewFilename};
+			    _ ->
+				exists
+			end
+		end,
+	    {atomic, Result} = mnesia:transaction(F),
+	    Result
+    end.
 
 
 reset_tracker_urls() ->
