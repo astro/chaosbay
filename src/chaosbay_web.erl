@@ -40,13 +40,14 @@ loop(Req) ->
     T1 = util:mk_timestamp_us(),
     Response = case (catch request(Req, Method, Path2)) of
 		   {'EXIT', Reason} ->
+		       io:format("Error for ~p ~p:~n\t~p~n~n", [Method, Path2, Reason]),
 		       %% TODO: return like 500 here
 		       ReasonS = lists:flatten(io_lib:format("~p", [Reason])),
 		       HTML =
 			   [{h2, ["Invalid stuff happened"]},
 			    {p, [{"class", "important error code"}], [ReasonS]}],
 		       Body = lists:map(fun html:to_iolist/1, HTML),
-		       html_ok(Req, Body);
+		       Req:respond({500, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body)});
 		   Response1 -> Response1
 	       end,
     T2 = util:mk_timestamp_us(),
@@ -107,7 +108,7 @@ request(Req, 'POST', "add") ->
 		[{h2, ["Invalid stuff happened"]},
 		 {p, [{"class", "important error code"}], [ReasonS]}],
 	    Body = lists:map(fun html:to_iolist/1, HTML),
-	    html_ok(Req, Body)
+	    Req:respond({406, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body)})
     end;
 
 request(Req, 'GET', "") ->
@@ -317,7 +318,7 @@ request(Req, 'GET', {download, Name}) ->
 	    Req:ok({?MIME_BITTORRENT,
 		    Binary});
 	not_found ->
-	    Req:not_found()
+	    html_not_found(Req)
     end;
 
 request(Req, 'GET', {details, Name}) ->
@@ -359,7 +360,7 @@ request(Req, 'GET', {details, Name}) ->
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
 	not_found ->
-	    Req:not_found()
+	    html_not_found(Req)
     end;
 
 request(Req, 'GET', Path) ->
@@ -373,10 +374,17 @@ request(Req, 'GET', Path) ->
     end.
 
 html_ok(Req, Body) ->
-    Req:ok(html_skeleton(Body)).
+    Req:ok({?MIME_XHTML, html_skeleton(Body)}).
+
+html_not_found(Req) ->
+    HTML =
+	[{h2, ["Not found"]},
+	 {p, [{"class", "important error code"}], ["Not pirated yet."]}],
+    Body = lists:map(fun html:to_iolist/1, HTML),
+    Req:respond({404, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body)}).
+
 
 html_skeleton(Body) ->
-    {?MIME_XHTML,
 	    [<<"<?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN' 'DTD/xhtml1-strict.dtd'>
 <html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'>
@@ -409,10 +417,10 @@ Running on ">>,
 		      <<" and ">>]
 	     end,
 	     atom_to_list(node()),
-<<"
+	     <<"
     </p>
   </body>
-</html>">>]}.
+</html>">>].
 
 link_to_details(Name) when is_binary(Name) ->
     link_to_details(binary_to_list(Name));
