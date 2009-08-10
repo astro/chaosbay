@@ -1,9 +1,5 @@
 %%%-------------------------------------------------------------------
 %%% Description: Parse bencoded files (.torrent)
-%%%
-%%%              Hashes consist of {Key, Value, Hash}, because the
-%%%              SHA1 hash of the value of the info element is used as
-%%%              the BitTorrent info_hash.
 %%%-------------------------------------------------------------------
 -module(benc).
 -export([parse_file/1, parse/1]).

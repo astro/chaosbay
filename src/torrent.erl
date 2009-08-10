@@ -4,7 +4,8 @@
 	 add/2, add_http/1, add_from_dir/1,
 	 reset_tracker_urls/0,
 	 recent/1,
-	 get_torrent_by_name/1, torrent_name_by_id_t/1]).
+	 get_torrent_meta_by_name/1, torrent_name_by_id_t/1,
+	 get_torrent_binary/1]).
 
 -include("../include/torrent.hrl").
 
@@ -12,9 +13,11 @@
 init() ->
     mnesia:create_schema([node()]),
     mnesia:start(),
-    util:safe_mnesia_create_table(torrent, [{disc_copies, [node()]},
-				  {attributes, record_info(fields, torrent)}]),
-    mnesia:add_table_index(torrent, id).
+    util:safe_mnesia_create_table(torrent_meta, [{disc_copies, [node()]},
+				  {attributes, record_info(fields, torrent_meta)}]),
+    mnesia:add_table_index(torrent, id),
+    util:safe_mnesia_create_table(torrent_data, [{disc_only_copies, [node()]},
+				  {attributes, record_info(fields, torrent_data)}]).
 
 
 add_http(URL) ->
@@ -48,23 +51,25 @@ add(Filename, Upload) ->
 		      _ -> Filename
 		  end,
     case (catch benc:parse(Upload)) of
-	{'EXIT', Reason} -> {error, Reason};
+	{'EXIT', _Reason} -> {error, "Cannot parse this file"};
 	ParsedFile ->
 	    %%Body = io_lib:format("<pre>file: ~s (~s)~n~p</pre>",[FileName, FileType, ParsedFile]),
 	    Id = torrent_info:info_hash(ParsedFile),
 	    Length = torrent_info:get_length(ParsedFile),
 	    ParsedFile2 = torrent_info:set_tracker(ParsedFile),
 	    Binary = benc:to_binary(ParsedFile2),
-	    Torrent = #torrent{name = NewFilename,
+	    TorrentMeta = #torrent_meta{name = NewFilename,
 			       id = Id,
 			       length = Length,
-			       date = util:mk_timestamp(),
-			       binary = Binary},
+			       date = util:mk_timestamp()},
+	    TorrentData = #torrent_data{name = NewFilename,
+					binary = Binary},
 	    F = fun() ->
 			mnesia:write_lock_table(torrent),
-			case mnesia:read({torrent, NewFilename}) of
+			case mnesia:read({torrent_meta, NewFilename}) of
 			    [] ->
-				mnesia:write(Torrent),
+				mnesia:write(TorrentMeta),
+				mnesia:write(TorrentData),
 				{ok, NewFilename};
 			    _ ->
 				exists
@@ -77,13 +82,13 @@ add(Filename, Upload) ->
 
 reset_tracker_urls() ->
     F = fun() ->
-		mnesia:write_lock_table(torrent),
-		mnesia:foldl(fun(#torrent{binary = Binary} = Torrent, _) ->
+		mnesia:write_lock_table(torrent_data),
+		mnesia:foldl(fun(#torrent_data{binary = Binary} = TorrentData, _) ->
 				     Parsed = benc:parse(Binary),
 				     Parsed2 = torrent_info:set_tracker(Parsed),
 				     Binary2 = benc:to_binary(Parsed2),
-				     mnesia:write(Torrent#torrent{binary = Binary2})
-			     end, 0, torrent)
+				     mnesia:write(TorrentData#torrent_data{binary = Binary2})
+			     end, 0, torrent_data)
 	end,
     {atomic, _} = mnesia:transaction(F).
 
@@ -91,24 +96,24 @@ reset_tracker_urls() ->
 recent(Max) ->
     F = fun() ->
 		S =
-		    mnesia:foldl(fun(Torrent, Result) ->
-					 sorted:insert(Result, Torrent)
+		    mnesia:foldl(fun(TorrentMeta, Result) ->
+					 sorted:insert(Result, TorrentMeta)
 				 end,
-				 sorted:new(#torrent.date, desc, Max),
-				 torrent),
+				 sorted:new(#torrent_meta.date, desc, Max),
+				 torrent_meta),
 		sorted:to_list(S)
 	end,
     {atomic, Result} = mnesia:transaction(F),
     Result.
 
 
-get_torrent_by_name(Name) when is_list(Name) ->
-    get_torrent_by_name(list_to_binary(Name));
+get_torrent_meta_by_name(Name) when is_list(Name) ->
+    get_torrent_meta_by_name(list_to_binary(Name));
 
-get_torrent_by_name(Name) ->
+get_torrent_meta_by_name(Name) ->
     F = fun() ->
-		case mnesia:read({torrent, Name}) of
-		    [Torrent] -> Torrent;
+		case mnesia:read({torrent_meta, Name}) of
+		    [TorrentMeta] -> TorrentMeta;
 		    [] -> not_found
 		end
 	end,
@@ -117,8 +122,17 @@ get_torrent_by_name(Name) ->
 
 
 torrent_name_by_id_t(Id) ->
-    case mnesia:index_read(torrent, Id, #torrent.id) of
+    case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
 	[] -> not_found;
-	[#torrent{name = Name}] -> {ok, Name}
+	[#torrent_meta{name = Name}] -> {ok, Name}
     end.
 
+get_torrent_binary(Name) when is_list(Name) ->
+    get_torrent_binary(list_to_binary(Name));
+get_torrent_binary(Name) ->
+    case mnesia:dirty_read(torrent_data, Name) of
+	[#torrent_data{binary = Binary}] ->
+	    {ok, Binary};
+	_ ->
+	    not_found
+    end.

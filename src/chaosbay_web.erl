@@ -111,7 +111,7 @@ request(Req, 'POST', "add") ->
     end;
 
 request(Req, 'GET', "") ->
-    Torrents = torrent:recent(200),
+    TorrentMetas = torrent:recent(200),
     HTML =
 	[{img, [{"src", "/static/chaosbay.png"}], []},
 	 {table, [{"border", "1"}],
@@ -127,10 +127,10 @@ request(Req, 'GET', "") ->
 		  ["L"]},
 		 {th, ["Speed"]}
 		]}
-	   | lists:map(fun(#torrent{name = Name,
-				    id = Id,
-				    length = Length,
-				    date = Date}) ->
+	   | lists:map(fun(#torrent_meta{name = Name,
+					 id = Id,
+					 length = Length,
+					 date = Date}) ->
 			       {S, L, Speed} = tracker:tracker_info(Id),
 			       Class = case {S, L} of
 					   {0, 0} -> "dead";
@@ -157,12 +157,12 @@ request(Req, 'GET', "") ->
 				 {td, [integer_to_list(L)]},
 				 {td, [util:human_bandwidth(Speed)]}
 				]}
-		       end, Torrents)]}],
+		       end, TorrentMetas)]}],
     Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
 
 request(Req, 'GET', "atom") ->
-    Torrents = torrent:recent(50),
+    TorrentMetas = torrent:recent(50),
     Atom = {feed, [{"xmlns", "http://www.w3.org/2005/Atom"}],
 	    [{title, [<<"Chaos Bay">>]},
 	     {id, [chaosbay:absolute_path("/")]},
@@ -172,11 +172,11 @@ request(Req, 'GET', "atom") ->
 	     {link, [{"rel", "alternate"},
 		     {"type", ?MIME_XHTML},
 		     {"href", chaosbay:absolute_path("/")}], []}
-	     | lists:map(fun(#torrent{name = Name,
-				      id = Id,
-				      date = Date,
-				      length = Length,
-				      binary = Binary}) ->
+	     | lists:map(fun(#torrent_meta{name = Name,
+					   id = Id,
+					   date = Date,
+					   length = Length}) ->
+				 {ok, Binary} = torrent:get_torrent_binary(Name),
 				 {S, L, Speed} = tracker:tracker_info(Id),
 				 LinkDetails = chaosbay:absolute_path(link_to_details(Name)),
 				 LinkTorrent = chaosbay:absolute_path(link_to_torrent(Name)),
@@ -210,7 +210,7 @@ request(Req, 'GET', "atom") ->
 					      }]}
 					   ]}
 					 ]}
-			 end, Torrents)]},
+			 end, TorrentMetas)]},
     Body = html:to_iolist(Atom),
     Req:ok({?MIME_ATOM,
 	    [<<"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\n">>, Body]});
@@ -312,8 +312,8 @@ request(Req, 'GET', "announce") ->
 
 
 request(Req, 'GET', {download, Name}) ->
-    case torrent:get_torrent_by_name(Name) of
-	#torrent{binary = Binary} ->
+    case torrent:get_torrent_binary(Name) of
+	{ok, Binary} ->
 	    Req:ok({?MIME_BITTORRENT,
 		    Binary});
 	not_found ->
@@ -321,10 +321,10 @@ request(Req, 'GET', {download, Name}) ->
     end;
 
 request(Req, 'GET', {details, Name}) ->
-    case torrent:get_torrent_by_name(Name) of
-	#torrent{id = Id,
-		 length = Length,
-		 binary = Binary} ->
+    case torrent:get_torrent_meta_by_name(Name) of
+	#torrent_meta{id = Id,
+		      length = Length} ->
+	    {ok, Binary} = torrent:get_torrent_binary(Name),
 	    Parsed = benc:parse(Binary),
 	    {S, L, Speed} = tracker:tracker_info(Id),
 	    HTML = [{h2, [Name]},

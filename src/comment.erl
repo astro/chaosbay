@@ -17,7 +17,7 @@ add(Name, Text) when is_list(Text) ->
     add(Name, list_to_binary(Text));
 
 add(Name, Text) ->
-    case torrent:get_torrent_by_name(Name) of
+    case torrent:get_torrent_meta_by_name(Name) of
 	not_found ->
 	    not_found;
 	_ ->

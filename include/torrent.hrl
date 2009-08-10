@@ -1,6 +1,5 @@
--record(torrent, {name,
-		  id,
-		  length,
-		  category = "Other",
-		  date = 0,
-		  binary = <<>>}).
+-record(torrent_meta, {name,
+		       id,
+		       length,
+		       date = 0}).
+-record(torrent_data, {name, binary}).
