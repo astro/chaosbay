@@ -38,7 +38,17 @@ loop(Req) ->
     Path2 = lists:dropwhile(fun(C) -> C == $/ end,
 			    Path),
     T1 = util:mk_timestamp_us(),
-    Response = request(Req, Method, Path2),
+    Response = case (catch request(Req, Method, Path2)) of
+		   {'EXIT', Reason} ->
+		       %% TODO: return like 500 here
+		       ReasonS = lists:flatten(io_lib:format("~p", [Reason])),
+		       HTML =
+			   [{h2, ["Invalid stuff happened"]},
+			    {p, [{"class", "important error code"}], [ReasonS]}],
+		       Body = lists:map(fun html:to_iolist/1, HTML),
+		       html_ok(Req, Body);
+		   Response1 -> Response1
+	       end,
     T2 = util:mk_timestamp_us(),
     io:format("~s [~Bus] ~s ~s~n", [Req:get(peer), T2 - T1, Method, Path]),
     Response.
@@ -91,9 +101,8 @@ request(Req, 'POST', "add") ->
 ">>);
 	invalid ->
 	    request(Req, 'GET', "add");
-	{error, Reason} ->
+	{error, ReasonS} ->
 	    %% TODO: return like 500 here
-	    ReasonS = lists:flatten(io_lib:format("~p", [Reason])),
 	    HTML =
 		[{h2, ["Invalid stuff happened"]},
 		 {p, [{"class", "important error code"}], [ReasonS]}],
