@@ -20,6 +20,8 @@ ensure_started(App) ->
 start() ->
     chaosbay_deps:ensure(),
     ensure_started(crypto),
+    ensure_started(collectd),
+    setup_collectd(),
     application:start(chaosbay).
 
 %% @spec stop() -> ok
@@ -38,3 +40,14 @@ absolute_path(Path) ->
 	    error_logger:warning_msg("http_base has not been set~n"),
 	    Path
     end.
+
+setup_collectd() ->
+    Interval = case application:get_env(chaosbay, collectd_interval) of
+		   {ok, Interval1} -> Interval1;
+		   undefined -> 10
+	       end,
+    case application:get_env(chaosbay, collectd_server) of
+	{ok, Server} -> collectd:add_server(Interval, Server);
+	undefined -> collectd:add_server(Interval)
+    end.
+
