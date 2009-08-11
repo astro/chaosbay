@@ -15,7 +15,7 @@ init() ->
     mnesia:start(),
     util:safe_mnesia_create_table(torrent_meta, [{disc_copies, [node()]},
 				  {attributes, record_info(fields, torrent_meta)}]),
-    mnesia:add_table_index(torrent, id),
+    mnesia:add_table_index(torrent_meta, id),
     util:safe_mnesia_create_table(torrent_data, [{disc_only_copies, [node()]},
 				  {attributes, record_info(fields, torrent_data)}]).
 
