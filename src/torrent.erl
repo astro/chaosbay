@@ -65,7 +65,8 @@ add(Filename, Upload) ->
 	    TorrentData = #torrent_data{name = NewFilename,
 					binary = Binary},
 	    F = fun() ->
-			mnesia:write_lock_table(torrent),
+			mnesia:write_lock_table(torrent_meta),
+			mnesia:write_lock_table(torrent_data),
 			case mnesia:read({torrent_meta, NewFilename}) of
 			    [] ->
 				mnesia:write(TorrentMeta),
