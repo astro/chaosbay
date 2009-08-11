@@ -8,7 +8,7 @@
 	       ip, port,
 	       downloaded, uploaded,
 	       left,
-	       speed, last}).
+	       upspeed, downspeed, last}).
 
 -define(RESPONSE_PEER_COUNT, 10).
 
@@ -25,25 +25,31 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 		    not_found -> not_found;
 		    {ok, _} ->
 			mnesia:write_lock_table(peer),
-			Speed = case mnesia:read({peer, {HashId, PeerId}}) of
-				    [#peer{downloaded = DownloadedOld,
-					   last = LastOld}] ->
-					(DownloadedOld - Downloaded) / (LastOld - Now);
-				    [] ->
-					0
+			{DownDelta, UpDelta, Last} =
+			    case mnesia:read({peer, {HashId, PeerId}}) of
+				[#peer{downloaded = DownloadedOld,
+				       uploaded = UploadedOld,
+				       last = Last1}] ->
+				    {lists:max([Downloaded - DownloadedOld, 0]),
+				     lists:max([Uploaded - UploadedOld, 0]),
+				     Last1};
+				[] ->
+				    {0, 0, 0}
 				end,
-			%%io:format("New speed: ~p/s~n",[Speed]),
+			Downspeed = DownDelta / (Last - Now),
+			Upspeed = UpDelta / (Last - Now),
 			mnesia:write(#peer{hash_peer = {HashId, PeerId},
 					   ip = IP, port = Port,
 					   downloaded = Downloaded, uploaded = Uploaded,
 					   left = Left,
-					   speed = Speed, last = Now}),
-			ok
+					   downspeed = Downspeed, upspeed = Upspeed, last = Now}),
+			{ok, DownDelta, UpDelta}
 		end
 	end,
 
     case mnesia:transaction(F) of
-	{atomic, ok} ->
+	{atomic, {ok, DownDelta, UpDelta}} ->
+	    collectd:inc_counter(if_octets, peers, [DownDelta, UpDelta]),
 	    %% Assemble result
 	    AllPeers = dirty_hash_peers(HashId),
 		%%io:format("AllPeers: ~p~n", [AllPeers]),
@@ -92,10 +98,14 @@ tracker_info(HashId) ->
     Peers = dirty_hash_peers(HashId),
     {Seeders, Leechers, Speed} =
 	lists:foldl(fun(#peer{left = 0,
-			      speed = PeerSpeed}, {S, L, Speed}) ->
+			      upspeed = PeerUpspeed,
+			      downspeed = PeerDownspeed}, {S, L, Speed}) ->
+			    PeerSpeed = lists:max([PeerUpspeed, PeerDownspeed]),
 			    {S + 1, L, Speed + PeerSpeed};
 		       (#peer{left = PeerLeft,
-			      speed = PeerSpeed}, {S, L, Speed}) when PeerLeft > 0 ->
+			      upspeed = PeerUpspeed,
+			      downspeed = PeerDownspeed}, {S, L, Speed}) when PeerLeft > 0 ->
+			    PeerSpeed = lists:max([PeerUpspeed, PeerDownspeed]),
 			    {S, L + 1, Speed + PeerSpeed}
 		    end, {0, 0, 0}, Peers),
     {Seeders, Leechers, Speed}.
