@@ -38,6 +38,9 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 				end,
 			Downspeed = DownDelta / (Last - Now),
 			Upspeed = UpDelta / (Last - Now),
+			%% write a completely new peer with the same
+			%% hash_peer because it has no state other
+			%% than downspeed & upspeed
 			mnesia:write(#peer{hash_peer = {HashId, PeerId},
 					   ip = IP, port = Port,
 					   downloaded = Downloaded, uploaded = Uploaded,
