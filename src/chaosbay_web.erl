@@ -463,7 +463,7 @@ html_skeleton(Body) ->
   </head>
   <body>
     <div id='head'>
-      <p><a href='/add'>Add</a></p>
+      <p><a href='/add' id='add'>Add</a></p>
       <h1><a href='/'>Chaos Bay</a></h1>
     </div>
     <img src='/static/mp3.jpg' id='logo'/>

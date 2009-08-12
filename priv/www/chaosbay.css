@@ -17,8 +17,14 @@ div#head p {
     text-align: right;
     background: black;
 }
+div#head p a#add:before {
+    content: url(/static/add.png);
+    display: inline;
+    vertical-align: bottom;
+}
 div#head p a {
     color: white;
+    text-decoration: none;
 }
 div#head h1 {
     font-size: x-large;
