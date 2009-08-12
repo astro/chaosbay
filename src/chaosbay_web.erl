@@ -138,8 +138,7 @@ request(Req, 'GET', "") ->
     ?COUNT_REQUEST(root),
     TorrentMetas = torrent:recent(200),
     HTML =
-	[{img, [{"src", "/static/chaosbay.png"}], []},
-	 {table, [{"border", "1"}],
+	[{table, [{"border", "1"}],
 	  [{tr, [{th, ["Name"]},
 		 {th, [""]},
 		 {th, ["Size"]},
@@ -467,6 +466,7 @@ html_skeleton(Body) ->
       <p><a href='/add'>Add</a></p>
       <h1><a href='/'>Chaos Bay</a></h1>
     </div>
+    <img src='/static/mp3.jpg' id='logo'/>
     <div id='content'>
 ">>, Body, <<"
     </div>
