@@ -49,9 +49,19 @@ get_files(Torrent) ->
 
 
 -define(TRACKER_URL, list_to_binary(chaosbay:absolute_path("/announce"))).
+-define(TRACKER_URLS, [[chaosbay:absolute_path("/announce"),
+			"dht://"],
+		       ["http://tracker.openbittorrent.com/announce",
+			"udp://tracker.openbittorrent.com:80/announce"],
+		       []]).
 
 set_tracker(Torrent1) ->
     Torrent2 = lists:keystore(<<"announce">>, 1, Torrent1,
 			      {<<"announce">>, ?TRACKER_URL}),
-    Torrent3 = lists:keydelete(<<"announce-list">>, 1, Torrent2),
+    Torrent3 = lists:keystore(<<"announce-list">>, 1, Torrent2,
+			      {<<"announce-list">>,
+			       lists:map(fun(List) ->
+						 lists:map(fun list_to_binary/1, List)
+					 end, ?TRACKER_URLS)
+			      }),
     Torrent3.
