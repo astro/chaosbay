@@ -58,6 +58,17 @@ loop(Req) ->
 
 %% Internal API
 
+get_remote_addr_(Addr) ->
+    case inet:getaddr(Addr, inet6) of
+	{ok, {0, 0, 0, 0, 0, 16#ffff, AB, CD}} ->
+	    {AB bsr 8, AB band 16#ff, CD bsr 8, CD band 16#ff};
+	{ok, Addr6} ->
+	    Addr6
+    end.
+
+-define(GET_REMOTE_ADDR, get_remote_addr_(Req:get(peer))).
+
+
 request(Req, 'GET', "add") ->
     Body = [<<"
 <h2>Add a .torrent file</h2>
@@ -265,7 +276,7 @@ request(Req, Method, "comments/" ++ Name)
 request(Req, 'GET', "announce") ->
     collectd:inc_counter(http_requests, announce, [1]),
     
-    IP = list_to_binary(mangle_addr(Req:get(peer))),
+    IP = ?GET_REMOTE_ADDR,
     QS = Req:parse_qs(),
     %%io:format("announce from ~p: ~p~n", [Req:get(peer), QS]),
     {value, {_, InfoHash1}} = lists:keysearch("info_hash", 1, QS),
@@ -309,11 +320,12 @@ request(Req, 'GET', "announce") ->
 		    not_found ->
 			[{<<"failure reason">>, <<"No torrent registered for info_hash">>}];
 		    {peers, Peers} ->
-			[{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
-			 {<<"peers">>, [[{<<"peer id">>, PeerPeerId},
-					 {<<"ip">>, PeerIP},
-					 {<<"port">>, PeerPort}]
-					|| {PeerPeerId, PeerIP, PeerPort} <- Peers]}]
+			case lists:keysearch("compact", 1, QS) of
+			    {value, _} ->
+				build_compact_tracker_response(Peers);
+			    _ ->
+				build_tracker_response(Peers)
+			end
 		end
 	end,
     io:format("Announce reply: ~p~n",[Reply]),
@@ -446,7 +458,27 @@ link_to_torrent(Name) when is_binary(Name) ->
 link_to_torrent(Name) ->
     "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
 
+build_tracker_response(Peers) ->
+    [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
+     {<<"peers">>, [[{<<"peer id">>, PeerPeerId},
+		     {<<"ip">>, inet_parse:ntoa(PeerIP)},
+		     {<<"port">>, PeerPort}]
+		    || {PeerPeerId, PeerIP, PeerPort} <- Peers]}].
 
-mangle_addr("::FFFF:" ++ IP4) -> IP4;
-mangle_addr("::ffff:" ++ IP4) -> IP4;
-mangle_addr(IP) -> IP.
+build_compact_tracker_response(Peers) ->
+    {Peers4, Peers6} = lists:foldl(fun({_, {_, _, _, _}, _} = Peer, {Peers4, Peers6}) ->
+					   {[Peer | Peers4], Peers6};
+				      ({_, {_, _, _, _, _, _, _, _}, _} = Peer, {Peers4, Peers6}) ->
+					   {Peers4, [Peer | Peers6]}
+				   end, {[], []}, Peers),
+    [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
+     {<<"compact">>, 1},
+     {<<"peers">>, list_to_binary([<<A:8, B:8, C:8, D:8, Port:16/big>>
+				   || {_, {A, B, C, D}, Port} <- Peers4])},
+     {<<"peers6">>, list_to_binary([<<(A bsr 8):8, (A band 16#ff):8, (B bsr 8):8, (B band 16#ff):8,
+				     (C bsr 8):8, (C band 16#ff):8, (D bsr 8):8, (D band 16#ff):8,
+				     (E bsr 8):8, (E band 16#ff):8, (F bsr 8):8, (F band 16#ff):8,
+				     (G bsr 8):8, (G band 16#ff):8, (H bsr 8):8, (H band 16#ff):8,
+				     Port:16/big>>
+				    || {_, {A, B, C, D, E, F, G, H}, Port} <- Peers6])}
+    ].
