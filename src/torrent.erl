@@ -4,7 +4,8 @@
 	 add/2, add_http/1, add_from_dir/1,
 	 reset_tracker_urls/0,
 	 recent/1,
-	 get_torrent_meta_by_name/1, torrent_name_by_id_t/1,
+	 get_torrent_meta_by_name/1,
+	 get_torrent_meta_by_id/1, torrent_name_by_id_t/1,
 	 get_torrent_binary/1]).
 
 -include("../include/torrent.hrl").
@@ -121,6 +122,16 @@ get_torrent_meta_by_name(Name) ->
     {atomic, Result} = mnesia:transaction(F),
     Result.
 
+get_torrent_meta_by_id(Id) ->
+    {atomic, Result} =
+	mnesia:transaction(
+	  fun() ->
+		  case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
+		      [] -> not_found;
+		      [TorrentMeta] -> {ok, TorrentMeta}
+		  end
+	  end),
+    Result.
 
 torrent_name_by_id_t(Id) ->
     case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of

@@ -338,6 +338,36 @@ request(Req, 'GET', "announce") ->
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
 
+request(Req, 'GET', "scrape") ->
+    ?COUNT_REQUEST(scrape),
+    
+    QS = Req:parse_qs(),
+    {value, {_, InfoHash1}} = lists:keysearch("info_hash", 1, QS),
+    InfoHash = list_to_binary(InfoHash1),
+    Reply = case torrent:get_torrent_meta_by_id(InfoHash) of
+		{ok, #torrent_meta{name = Name,
+				   length = Length}} ->
+		    {Complete, Incomplete, Downloaded} = tracker:tracker_scrape(InfoHash),
+		    DownloadCount = trunc(Downloaded / Length),
+		    [{<<"files">>,
+		      [{InfoHash,
+			[{<<"complete">>, Complete},
+			 {<<"incomplete">>, Incomplete},
+			 {<<"downloaded">>, DownloadCount},
+			 {<<"name">>, Name}]}]},
+		     {<<"flags">>,
+		      [{<<"min_request_interval">>, ?TRACKER_REQUEST_INTERVAL}]}
+		    ];
+		not_found ->
+		    [{<<"failure reason">>, <<"No torrent registered for info_hash">>},
+		     {<<"flags">>,
+		      [{<<"min_request_interval">>, ?TRACKER_REQUEST_INTERVAL}]}
+		    ]
+	   end,
+    io:format("Scrape reply: ~p~n",[Reply]),
+    Bencoded = benc:to_binary(Reply),
+    Req:ok({?MIME_BITTORRENT,
+	    Bencoded});
 
 request(Req, 'GET', {download, Name}) ->
     case torrent:get_torrent_binary(Name) of

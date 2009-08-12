@@ -1,6 +1,6 @@
 -module(tracker).
 
--export([init/0, tracker_request/7, tracker_request_stopped/3, tracker_info/1,
+-export([init/0, tracker_request/7, tracker_request_stopped/3, tracker_info/1, tracker_scrape/1,
 	 cleaner_start_link/0, cleaner_loop/0]).
 
 
@@ -114,6 +114,16 @@ tracker_info(HashId) ->
 			    {S, L + 1, Speed + PeerSpeed}
 		    end, {0, 0, 0}, Peers),
     {Seeders, Leechers, Speed}.
+
+
+tracker_scrape(HashId) ->
+    lists:foldl(fun(#peer{downloaded = PeerDownloaded,
+			  left = 0}, {Complete, Incomplete, Downloaded}) ->
+			{Complete + 1, Incomplete, Downloaded + PeerDownloaded};
+		   (#peer{downloaded = PeerDownloaded}, {Complete, Incomplete, Downloaded}) ->
+			{Complete, Incomplete + 1, Downloaded + PeerDownloaded}
+		end, {0, 0, 0}, dirty_hash_peers(HashId)).
+
 
 
 dirty_hash_peers(HashId) ->
