@@ -65,11 +65,16 @@ get_remote_addr_(Addr) ->
 	{ok, Addr6} ->
 	    Addr6
     end.
-
 -define(GET_REMOTE_ADDR, get_remote_addr_(Req:get(peer))).
 
+count_request_(What, {_, _, _, _}) ->
+    collectd:inc_counter(http_requests, "inet_" ++ atom_to_list(What), [1]);
+count_request_(What, {_, _, _, _, _, _, _, _}) ->
+    collectd:inc_counter(http_requests, "inet6_" ++ atom_to_list(What), [1]).
+-define(COUNT_REQUEST(What), count_request_(What, ?GET_REMOTE_ADDR)).
 
 request(Req, 'GET', "add") ->
+    ?COUNT_REQUEST(add_form),
     Body = [<<"
 <h2>Add a .torrent file</h2>
 <form action='/add' method='POST' enctype='multipart/form-data' class='important'>
@@ -96,7 +101,7 @@ It's kinda stupid without any seeders.
     html_ok(Req, Body);
 
 request(Req, 'POST', "add") ->
-    collectd:inc_counter(http_requests, add, [1]),
+    ?COUNT_REQUEST(add),
     Multipart = mochiweb_multipart:parse_form(Req),
     {FileName, {_FileType, _}, File} = proplists:get_value("file", Multipart),
     case torrent:add(FileName, File) of
@@ -125,7 +130,7 @@ request(Req, 'POST', "add") ->
     end;
 
 request(Req, 'GET', "") ->
-    collectd:inc_counter(http_requests, root, [1]),
+    ?COUNT_REQUEST(root),
     TorrentMetas = torrent:recent(200),
     HTML =
 	[{img, [{"src", "/static/chaosbay.png"}], []},
@@ -177,7 +182,7 @@ request(Req, 'GET', "") ->
     html_ok(Req, Body);
 
 request(Req, 'GET', "atom") ->
-    collectd:inc_counter(http_requests, atom, [1]),
+    ?COUNT_REQUEST(atom),
     TorrentMetas = torrent:recent(50),
     Atom = {feed, [{"xmlns", "http://www.w3.org/2005/Atom"}],
 	    [{title, [<<"Chaos Bay">>]},
@@ -232,7 +237,7 @@ request(Req, 'GET', "atom") ->
 	    [<<"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\n">>, Body]});
 		   
 request(Req, 'GET', "static/" ++ Path) ->
-    collectd:inc_counter(http_requests, static, [1]),
+    ?COUNT_REQUEST(static),
     DocRoot = chaosbay_deps:local_path(["priv", "www"]),
     Req:serve_file(Path, DocRoot, [{"Cache-Control", "max-age=7200"},
 				   {"Expires", "Thu, 30 Oct 2008 23:42:59 GMT"}]);
@@ -243,12 +248,12 @@ request(Req, Method, "comments/" ++ Name)
 
     if
 	Method =:= 'POST' ->
-	    collectd:inc_counter(http_requests, post_comment, [1]),
+	    ?COUNT_REQUEST(post_comment),
 	    Posted = Req:parse_post(),
 	    {value, {_, Text}} = lists:keysearch("text", 1, Posted),
 	    comment:add(Name, Text);
 	true ->
-	    collectd:inc_counter(http_requests, get_comments, [1]),
+	    ?COUNT_REQUEST(get_comments),
 	    no_post
     end,
 
@@ -274,7 +279,7 @@ request(Req, Method, "comments/" ++ Name)
 ">>]});
 
 request(Req, 'GET', "announce") ->
-    collectd:inc_counter(http_requests, announce, [1]),
+    ?COUNT_REQUEST(announce),
     
     IP = ?GET_REMOTE_ADDR,
     QS = Req:parse_qs(),
@@ -337,11 +342,11 @@ request(Req, 'GET', "announce") ->
 request(Req, 'GET', {download, Name}) ->
     case torrent:get_torrent_binary(Name) of
 	{ok, Binary} ->
-	    collectd:inc_counter(http_requests, download, [1]),
+	    ?COUNT_REQUEST(download),
 	    Req:ok({?MIME_BITTORRENT,
 		    Binary});
 	not_found ->
-	    collectd:inc_counter(http_requests, download404, [1]),
+	    ?COUNT_REQUEST(download404),
 	    html_not_found(Req)
     end;
 
@@ -349,7 +354,7 @@ request(Req, 'GET', {details, Name}) ->
     case torrent:get_torrent_meta_by_name(Name) of
 	#torrent_meta{id = Id,
 		      length = Length} ->
-	    collectd:inc_counter(http_requests, details, [1]),
+	    ?COUNT_REQUEST(details),
 	    {ok, Binary} = torrent:get_torrent_binary(Name),
 	    Parsed = benc:parse(Binary),
 	    {S, L, Speed} = tracker:tracker_info(Id),
@@ -385,7 +390,7 @@ request(Req, 'GET', {details, Name}) ->
 	    Body = lists:map(fun html:to_iolist/1, HTML),
 	    html_ok(Req, Body);
 	not_found ->
-	    collectd:inc_counter(http_requests, details404, [1]),
+	    ?COUNT_REQUEST(details404),
 	    html_not_found(Req)
     end;
 
