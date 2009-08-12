@@ -264,6 +264,8 @@ request(Req, Method, "comments/" ++ Name)
 
 request(Req, 'GET', "announce") ->
     collectd:inc_counter(http_requests, announce, [1]),
+    
+    IP = list_to_binary(mangle_addr(Req:get(peer))),
     QS = Req:parse_qs(),
     %%io:format("announce from ~p: ~p~n", [Req:get(peer), QS]),
     {value, {_, InfoHash1}} = lists:keysearch("info_hash", 1, QS),
@@ -273,7 +275,7 @@ request(Req, 'GET', "announce") ->
     Reply =
 	case lists:keysearch("event", 1, QS) of
 	    {value, {_, "stopped"}} ->
-		tracker:tracker_request_stopped(InfoHash, PeerId),
+		tracker:tracker_request_stopped(InfoHash, PeerId, IP),
 		[{<<"ok">>, <<"true">>}];
 	    
 	    _ ->
@@ -299,7 +301,6 @@ request(Req, 'GET', "announce") ->
 			     end,
 		{value, {_, Left1}} = lists:keysearch("left", 1, QS),
 		{Left, _} = string:to_integer(Left1),
-		IP = list_to_binary(mangle_addr(Req:get(peer))),
 		Result =
 		    tracker:tracker_request(InfoHash, PeerId,
 					    IP, Port,

@@ -1,6 +1,6 @@
 -module(tracker).
 
--export([init/0, tracker_request/7, tracker_request_stopped/2, tracker_info/1,
+-export([init/0, tracker_request/7, tracker_request_stopped/3, tracker_info/1,
 	 cleaner_start_link/0, cleaner_loop/0]).
 
 
@@ -87,9 +87,14 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
     end.
 
 
-tracker_request_stopped(HashId, PeerId) ->
+tracker_request_stopped(HashId, PeerId, IP) ->
     F = fun() ->
-		mnesia:delete({peer, {HashId, PeerId}})
+		case mnesia:read({peer, {HashId, PeerId}}) of
+		    [#peer{ip = IP1}] when IP == IP1 ->
+			mnesia:delete({peer, {HashId, PeerId}});
+		    _ ->
+			ignored
+		end
 	end,
     {atomic, _} = mnesia:transaction(F).
 
