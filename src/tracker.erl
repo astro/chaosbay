@@ -146,8 +146,8 @@ pick_randomly(List, NToPick) ->
 
 %%% CLEANER
 
--define(CLEAN_INTERVAL, 1800).
--define(PEER_MAX_AGE, ?CLEAN_INTERVAL * 3).
+-define(CLEAN_INTERVAL, 10).
+-define(PEER_MAX_AGE, ?CLEAN_INTERVAL * 180).
 
 cleaner_start_link() ->
     Pid = spawn_link(fun cleaner_loop/0),
