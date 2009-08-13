@@ -49,8 +49,7 @@ get_files(Torrent) ->
 
 
 -define(TRACKER_URL, list_to_binary(chaosbay:absolute_path("/announce"))).
--define(TRACKER_URLS, [[chaosbay:absolute_path("/announce"),
-			"dht://"],
+-define(TRACKER_URLS, [[chaosbay:absolute_path("/announce")],
 		       ["http://tracker.openbittorrent.com/announce",
 			"udp://tracker.openbittorrent.com:80/announce"],
 		       []]).
