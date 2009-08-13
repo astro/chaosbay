@@ -55,6 +55,13 @@ h2, h3 {
     margin: 2em 0 0.1em;
     color: #999;
 }
+div#content form#search {
+    text-align: center;
+    margin: 1em auto;
+}
+div#content form#search input#q {
+    text-align: left;
+}
 div#content .important {
     border: 1px solid #774;
     background: #ffc;

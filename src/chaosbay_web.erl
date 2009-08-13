@@ -147,7 +147,13 @@ request(Req, 'POST', "add") ->
 
 request(Req, 'GET', "") ->
     ?COUNT_REQUEST(root),
-    Req:respond({301, [{"Location", chaosbay:absolute_path("/browse/age/a/0/")}], []});
+    Req:respond({301, [{"Location", browse_link(age, asc, 0, "")}], []});
+
+request(Req, 'GET', "search") ->
+    QS = Req:parse_qs(),
+    {value, {_, QueryEncoded}} = lists:keysearch("q", 1, QS),
+    Pattern = mochiweb_util:unquote(QueryEncoded),
+    Req:respond({301, [{"Location", browse_link(seeders, desc, 0, Pattern)}], []});
 
 request(Req, 'GET', "browse/" ++ Path) ->
     ?COUNT_REQUEST(browse),
@@ -156,14 +162,27 @@ request(Req, 'GET', "browse/" ++ Path) ->
 				      "a" -> {asc, desc};
 				      "d" -> {desc, asc}
 				  end,
+    io:format("{Direction, OtherDirection} = ~p~n", [{Direction, OtherDirection}]),
     Offset = list_to_integer(OffsetS),
-    io:format("Offset: ~p~n",[Offset]),
     Pattern = mochiweb_util:unquote(PatternEncoded),
     {TorrentMetas, TorrentTotal} = torrent_browse:search(Pattern,
 							 ?RESULTSET_LENGTH, Offset,
 							 SortName, Direction),
     HTML =
-	[{table, [{"border", "1"}],
+	[{form, [{"id", "search"},
+		 {"method", "get"},
+		 {"action", "/search"}],
+	  [{label, [{"for", "q"}], ["Search:"]},
+	   {input, [{"type", "text"},
+		    {"name", "q"},
+		    {"id", "q"},
+		    {"title", "All space-seperated words will AND-match. Glob patterns (*?) allowed."},
+		    {"length", "40"},
+		    {"value", Pattern}], []},
+	   {input, [{"type", "submit"},
+		    {"value", "Search"}], []}
+	  ]},
+	 {table, [{"border", "1"}],
 	  [{tr, [{th, [{a, [{"href", ?COL_LINK(name)}], ["Name"]}]},
 		 {th, [""]},
 		 {th, [{a, [{"href", ?COL_LINK(size)}], ["Size"]}]},
@@ -177,18 +196,15 @@ request(Req, 'GET', "browse/" ++ Path) ->
 		 {th, [{a, [{"href", ?COL_LINK(speed)}], ["Speed"]}]}
 		]}
 	   | lists:map(fun(#browse_result{name = Name,
-					  id = Id,
 					  length = Length,
-					  age = Age,
+					  age = Age, comments = C,
 					  seeders = S, leechers = L,
 					  speed = Speed}) ->
-			       {S, L, Speed} = tracker:tracker_info(Id),
 			       Class = case {S, L} of
 					   {0, 0} -> "dead";
 					   {0, _} -> "starving";
 					   {_, _} -> ""
 				       end,
-			       C = comment:get_comments_count(Name),
 			       LinkDetails = link_to_details(Name),
 			       LinkTorrent = link_to_torrent(Name),
 			       {tr, [{"class", Class}],
@@ -540,11 +556,7 @@ browse_link(SortName, desc, Offset, Pattern) ->
 browse_link(SortName, Direction, Offset, Pattern) when is_integer(Offset) ->
     browse_link(SortName, Direction, integer_to_list(Offset), Pattern);
 browse_link(SortName, Direction, Offset, Pattern) ->
-    io:format("browse_link(~p, ~p, ~p, ~p) -> ~p~n", [SortName, Direction, Offset, Pattern,     "/browse/" ++
-	SortName ++ "/" ++
-	Direction ++ "/" ++
-	Offset ++ "/" ++
-	urlencode(Pattern)]),
+    io:format("browse_link(~p, ~p, ~p, ~p)~n", [SortName, Direction, Offset, Pattern]),
     "/browse/" ++
 	SortName ++ "/" ++
 	Direction ++ "/" ++

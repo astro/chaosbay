@@ -11,11 +11,12 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 				       Pattern)),
     Fields = lists:map(fun string:to_lower/1,
 		       lists:map(fun atom_to_list/1,
-				 record_info(fields, torrent_meta))),
+				 record_info(fields, browse_result))),
     SortN = case util:list_index(SortField, Fields) of
 		0 -> exit(no_such_field);
 		N -> N + 1
 	    end,
+    io:format("~p ~p. in ~p~n", [SortField, SortN, Fields]),
     Sorted = torrent_search:fold(
 	       fun(#torrent_meta{name = Name,
 				 id = Id,
@@ -26,9 +27,11 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 			   true ->
 			       Age = Now - Date,
 			       {S, L, Speed} = tracker:tracker_info(Id),
+			       Comments = comment:get_comments_count(Name),
 			       Result = #browse_result{name = Name,
 						       id = Id,
 						       length = Length,
+						       comments = Comments,
 						       age = Age,
 						       seeders = S,
 						       leechers = L,
