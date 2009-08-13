@@ -78,6 +78,10 @@ div#content table tr th {
     color: white;
     background: black;
 }
+div#content table tr th a {
+    color: white;
+    text-decoration: none;
+}
 div#content table tr th:first-child {
     text-align: left;
 }

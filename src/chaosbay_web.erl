@@ -74,6 +74,20 @@ count_request_(What, {_, _, _, _, _, _, _, _}) ->
     collectd:inc_counter(http_requests, "inet6_" ++ atom_to_list(What), [1]).
 -define(COUNT_REQUEST(What), count_request_(What, ?GET_REMOTE_ADDR)).
 
+-define(COL_LINK(Field), (case atom_to_list(Field) of
+			      SortName ->
+				  "/browse/" ++
+				      SortName ++ "/" ++
+				      OtherDirection ++ "/" ++
+				      OffsetS ++ "/" ++
+				      PatternEncoded;
+			      FieldS ->
+				  "/browse/" ++
+				      FieldS ++ "/a/" ++
+				      OffsetS ++ "/" ++
+				      PatternEncoded
+			  end)).
+				  
 request(Req, 'GET', "add") ->
     ?COUNT_REQUEST(add_form),
     Body = [<<"
@@ -144,28 +158,29 @@ request(Req, 'GET', "") ->
 
 request(Req, 'GET', "browse/" ++ Path) ->
     ?COUNT_REQUEST(browse),
-    [SortName, DirectionS, OffsetS, Pattern] = util:split_string(Path, $/, 4),
-    Direction = case DirectionS of
-		    "a" -> asc;
-		    "d" -> desc
-		end,
+    [SortName, DirectionS, OffsetS, PatternEncoded] = util:split_string(Path, $/, 4),
+    {Direction, OtherDirection} = case DirectionS of
+				      "a" -> {asc, "d"};
+				      "d" -> {desc, "a"}
+				  end,
     Offset = list_to_integer(OffsetS),
+    Pattern = mochiweb_util:unquote(PatternEncoded),
     TorrentMetas = torrent_browse:search(Pattern,
 					 ?RESULTSET_LENGTH, Offset,
-					 list_to_atom(SortName), Direction),
+					 SortName, Direction),
     HTML =
 	[{table, [{"border", "1"}],
-	  [{tr, [{th, ["Name"]},
+	  [{tr, [{th, [{a, [{"href", ?COL_LINK(name)}], ["Name"]}]},
 		 {th, [""]},
-		 {th, ["Size"]},
-		 {th, ["Age"]},
+		 {th, [{a, [{"href", ?COL_LINK(size)}], ["Size"]}]},
+		 {th, [{a, [{"href", ?COL_LINK(age)}], ["Age"]}]},
 		 {th, [{"title", "Comments"}],
-		  ["C"]},
+		  [{a, [{"href", ?COL_LINK(comments)}], ["C"]}]},
 		 {th, [{"title", "Seeders"}],
-		  ["S"]},
+		  [{a, [{"href", ?COL_LINK(seeders)}], ["S"]}]},
 		 {th, [{"title", "Leechers"}],
-		  ["L"]},
-		 {th, ["Speed"]}
+		  [{a, [{"href", ?COL_LINK(seechers)}], ["L"]}]},
+		 {th, [{a, [{"href", ?COL_LINK(speed)}], ["Speed"]}]}
 		]}
 	   | lists:map(fun(#browse_result{name = Name,
 					  id = Id,

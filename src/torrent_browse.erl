@@ -14,7 +14,7 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 				 record_info(fields, torrent_meta))),
     SortN = case util:list_index(SortField, Fields) of
 		0 -> exit(no_such_field);
-		N -> N
+		N -> N + 1
 	    end,
     Sorted = torrent_search:fold(
 	       fun(#torrent_meta{name = Name,
