@@ -551,7 +551,7 @@ browse_link(SortName, Direction, Offset, Pattern) when is_atom(SortName) ->
 browse_link(SortName, asc, Offset, Pattern) ->
     browse_link(SortName, "a", Offset, Pattern);
 browse_link(SortName, desc, Offset, Pattern) ->
-    browse_link(SortName, "a", Offset, Pattern);
+    browse_link(SortName, "d", Offset, Pattern);
 browse_link(SortName, Direction, Offset, Pattern) when is_integer(Offset) ->
     browse_link(SortName, Direction, integer_to_list(Offset), Pattern);
 browse_link(SortName, Direction, Offset, Pattern) ->
