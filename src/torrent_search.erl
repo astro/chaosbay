@@ -13,7 +13,7 @@
 
 -record(request, {requester, foldfun, acc}).
 -record(request_error, {requester, reason}).
--record(state, {worker = undefined, queue = []}).
+-record(state, {worker = undefined, queue = [], worker_start = undefined}).
 
 -define(SERVER, ?MODULE).
 
@@ -70,16 +70,18 @@ handle_call({fold, FoldFun, AccIn}, From, #state{queue = Queue} = State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({worker_done, Worker, ResultQueue}, #state{worker = Worker} = State) ->
+handle_cast({worker_done, Worker, ResultQueue}, #state{worker = Worker,
+						       worker_start = WorkerStart} = State) ->
     lists:foreach(fun(#request{requester = Requester, acc = AccOut}) ->
 			  gen_server:reply(Requester, {ok, AccOut});
 		     (#request_error{requester = Requester, reason = Reason}) ->
 			  gen_server:reply(Requester, {error, Reason})
 		  end, ResultQueue),
 
-    State2 = State#state{worker = undefined},
-    State3 = maybe_start(State2),
-    {noreply, State3}.
+    collectd:set_gauge(delay, torrent_search, [(util:mk_timestamp_us() - WorkerStart) / 1000000]),
+    State2 = maybe_start(State#state{worker = undefined,
+				     worker_start = undefined}),
+    {noreply, State2}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_info(Info, State) -> {noreply, State} |
@@ -121,7 +123,7 @@ maybe_start(#state{worker = undefined, queue = Queue} = State) ->
     NewWorker = spawn_link(fun() ->
 				   worker(Queue)
 			   end),
-    State#state{worker = NewWorker, queue = []}.
+    State#state{worker = NewWorker, queue = [], worker_start = util:mk_timestamp_us()}.
 
 
 worker(Queue) ->
