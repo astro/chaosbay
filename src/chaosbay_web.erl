@@ -96,7 +96,11 @@ It's kinda stupid without any seeders.
   <a href='http://www.bittorrent.com/'>original BitTorrent client</a>,
   <a href='http://claudiusmaximus.goto10.org/index.php?page=coding/buildtorrent'>buildtorrent</a>
   or <a href='http://btfaq.com/serve/cache/14.html'>many others.</a>
+  Examples:
 </p>
+<pre>buildtorrent -a ">>, chaosbay:absolute_path("/announce"), <<" <i>SourceDirectory</i> <i>TargetFile.torrent</i>
+createtorrent -a ">>, chaosbay:absolute_path("/announce"), <<" <i>SourceDirectory</i> <i>TargetFile.torrent</i>
+</pre>
 <h3>Script me!</h3>
 <p>
   Uploading a batch of .torrent files with the shell you trust? No problem for <a href='http://curl.haxx.se/'>curl</a>:
