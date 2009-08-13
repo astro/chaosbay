@@ -130,7 +130,7 @@ worker(Queue) ->
     {atomic, ResultQueue} =
 	mnesia:transaction(
 	  fun() ->
-		  util:mnesia_fold_table_t(
+		  mnesia:foldl(
 		    fun(TorrentMeta, Queue1) ->
 			    lists:map(fun(#request{requester = Requester,
 						   foldfun = FoldFun,
@@ -143,6 +143,6 @@ worker(Queue) ->
 					 (#request_error{} = RequestError) ->
 					      RequestError
 				      end, Queue1)
-		    end, Queue, #torrent_meta{_ = '_'})
+		    end, Queue, torrent_meta)
 	  end),
     gen_server:cast(?SERVER, {worker_done, self(), ResultQueue}).
