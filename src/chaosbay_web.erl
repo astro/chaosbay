@@ -491,12 +491,20 @@ Running on ">>,
 link_to_details(Name) when is_binary(Name) ->
     link_to_details(binary_to_list(Name));
 link_to_details(Name) ->
-    "/" ++ mochiweb_util:quote_plus(Name).
+    "/" ++ urlencode(Name).
 
 link_to_torrent(Name) when is_binary(Name) ->
     link_to_torrent(binary_to_list(Name));
 link_to_torrent(Name) ->
-    "/" ++ mochiweb_util:quote_plus(Name) ++ ".torrent".
+    "/" ++ urlencode(Name) ++ ".torrent".
+
+urlencode(S) ->
+    lists:flatten(
+      lists:map(fun($+) -> "%20";
+		   (C) -> C
+		end,
+		mochiweb_util:quote_plus(S)
+	       )).
 
 build_tracker_response(Peers) ->
     [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
