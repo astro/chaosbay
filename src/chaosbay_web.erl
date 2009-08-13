@@ -470,7 +470,6 @@ html_skeleton(Body) ->
       <p><a href='/add' id='add'>Add</a></p>
       <h1><a href='/'>Chaos Bay</a></h1>
     </div>
-    <img src='/static/mp3.jpg' id='logo'/>
     <div id='content'>
 ">>, Body, <<"
     </div>
