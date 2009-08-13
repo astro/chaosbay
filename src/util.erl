@@ -4,7 +4,7 @@
 	 human_length/1, human_bandwidth/1, human_duration/1,
 	 timestamp_to_iso8601/1,
 	 pmap/2, timeout/2,
-	 safe_mnesia_create_table/2, mnesia_fold_table_t/3,
+	 safe_mnesia_create_table/2,
 	 split_string/3, list_index/2]).
 
 mk_timestamp() ->
@@ -104,20 +104,6 @@ safe_mnesia_create_table(Name, TabDef) ->
 	    ok;
 	E -> exit(E)
     end.
-
--define(BATCH_SIZE, 64).
-mnesia_fold_table_t(Fun, AccIn, MatchHead) ->
-    Tab = element(1, MatchHead),
-    mnesia_fold_table_t2(Fun, AccIn,
-			 mnesia:select(Tab, [{MatchHead, [], ['$_']}], ?BATCH_SIZE, read)).
-
-mnesia_fold_table_t2(_Fun, AccIn, '$end_of_table') ->
-    AccIn;
-mnesia_fold_table_t2(Fun, AccIn, {[], Cont}) ->
-    mnesia_fold_table_t2(Fun, AccIn, mnesia:select(Cont));
-mnesia_fold_table_t2(Fun, AccIn, {[Object | Rest], Cont}) ->
-    AccOut = Fun(Object, AccIn),
-    mnesia_fold_table_t2(Fun, AccOut, {Rest, Cont}).
 
 
 split_string(S, _Sep, 1) ->

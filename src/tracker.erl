@@ -185,24 +185,25 @@ collect_peer_stats() ->
     {atomic, {Seeders4, Leechers4, Seeders6, Leechers6}} =
 	mnesia:transaction(
 	  fun() ->
-		  util:mnesia_fold_table_t(fun(#peer{ip = {_, _, _, _}, left = 0},
-					       {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-						   {Seeders4 + 1, Leechers4, Seeders6, Leechers6};
-					      (#peer{ip = {_, _, _, _}},
-					       {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-						   {Seeders4, Leechers4 + 1, Seeders6, Leechers6};
-					      (#peer{left = 0},
-					       {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-						   {Seeders4, Leechers4, Seeders6 + 1, Leechers6};
-					      (#peer{},
-					       {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-						   {Seeders4, Leechers4, Seeders6, Leechers6 + 1}
-					   end,
-					   {0, 0, 0, 0},
-					   #peer{_ = '_'})
+		  mnesia:foldl(fun(#peer{ip = {_, _, _, _}, left = 0},
+				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
+				       {Seeders4 + 1, Leechers4, Seeders6, Leechers6};
+				  (#peer{ip = {_, _, _, _}},
+				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
+				       {Seeders4, Leechers4 + 1, Seeders6, Leechers6};
+				  (#peer{left = 0},
+				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
+				       {Seeders4, Leechers4, Seeders6 + 1, Leechers6};
+				  (#peer{},
+				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
+				       {Seeders4, Leechers4, Seeders6, Leechers6 + 1}
+			       end,
+			       {0, 0, 0, 0},
+			       peer)
 	  end),
     io:format("peer_stats: ~p~n", [{Seeders4, Leechers4, Seeders6, Leechers6}]),
     collectd:set_gauge(peers, inet_seeders, [Seeders4]),
     collectd:set_gauge(peers, inet_leechers, [Leechers4]),
     collectd:set_gauge(peers, inet6_seeders, [Seeders6]),
     collectd:set_gauge(peers, inet6_leechers, [Leechers6]).
+
