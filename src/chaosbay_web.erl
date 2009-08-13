@@ -228,8 +228,8 @@ request(Req, 'GET', "browse/" ++ Path) ->
 	  [{a, if PageOffset == Offset -> [{"id", "current"}];
 		  true -> [{"href", browse_link(SortName, Direction, PageOffset, Pattern)}]
 	       end,
-	    [lists:flatten(io_lib:format("~B", [PageOffset]))]}
-	   || PageOffset <- lists:seq(0, TorrentTotal, ?RESULTSET_LENGTH)]}
+	    [lists:flatten(io_lib:format("~B", [PageNumber]))]}
+	   || {PageNumber, PageOffset} <- generate_pages(TorrentTotal)]}
 	],
     Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
@@ -594,3 +594,11 @@ build_compact_tracker_response(Peers) ->
 				     Port:16/big>>
 				    || {_, {A, B, C, D, E, F, G, H}, Port} <- Peers6])}
     ].
+
+generate_pages(Total) ->
+    {_, Result} =
+	lists:foldl(fun(Offset, {N, Result}) ->
+			    {N + 1, [{N, Offset} | Result]}
+		    end, {1, []}, lists:seq(0, Total, ?RESULTSET_LENGTH)),
+    lists:reverse(Result).
+
