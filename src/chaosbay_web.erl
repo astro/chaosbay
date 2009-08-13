@@ -555,7 +555,6 @@ browse_link(SortName, desc, Offset, Pattern) ->
 browse_link(SortName, Direction, Offset, Pattern) when is_integer(Offset) ->
     browse_link(SortName, Direction, integer_to_list(Offset), Pattern);
 browse_link(SortName, Direction, Offset, Pattern) ->
-    io:format("browse_link(~p, ~p, ~p, ~p)~n", [SortName, Direction, Offset, Pattern]),
     "/browse/" ++
 	SortName ++ "/" ++
 	Direction ++ "/" ++
