@@ -189,7 +189,7 @@ request(Req, 'GET', "browse/" ++ Path) ->
 	 {table, [{"border", "1"}],
 	  [{tr, [{th, [{a, [{"href", ?COL_LINK(name)}], ["Name"]}]},
 		 {th, [""]},
-		 {th, [{a, [{"href", ?COL_LINK(size)}], ["Size"]}]},
+		 {th, [{a, [{"href", ?COL_LINK(length)}], ["Size"]}]},
 		 {th, [{a, [{"href", ?COL_LINK(age)}], ["Age"]}]},
 		 {th, [{"title", "Comments"}],
 		  [{a, [{"href", ?COL_LINK(comments)}], ["C"]}]},
