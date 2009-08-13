@@ -21,7 +21,7 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 				 length = Length,
 				 date = Date},
 		   Sorted) ->
-		       NameLower = string:to_lower(Name),
+		       NameLower = string:to_lower(binary_to_list(Name)),
 		       case FilterFun(NameLower) of
 			   true ->
 			       Age = Now - Date,
@@ -51,14 +51,13 @@ build_filter(Pattern) ->
     {Expr, Rest} = lists:splitwith(fun($\s) -> false;
 				      (_) -> true
 				   end, Pattern),
-    {ok, RE} = regexp:parse(regexp:sh_to_awk("*" ++ Expr ++ "*")),
     fun(Name) ->
 	    case (build_filter(Rest))(Name) of
 		true ->
 		    %% Check
-		    case regexp:first_match(Name, RE) of
-			nomatch -> false;
-			{match, _, _} -> true
+		    case string:str(Name, Expr) of
+			0 -> false;
+			_ -> true
 		    end;
 		false ->
 		    false

@@ -180,7 +180,7 @@ request(Req, 'GET', "browse/" ++ Path) ->
 	  [{input, [{"type", "text"},
 		    {"name", "q"},
 		    {"id", "q"},
-		    {"title", "All space-seperated words will AND-match. Glob patterns (*?) allowed."},
+		    {"title", "All space-seperated words will be AND-match."},
 		    {"length", "40"},
 		    {"value", Pattern}], []},
 	   {input, [{"type", "submit"},
