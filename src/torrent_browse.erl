@@ -7,8 +7,7 @@
 
 search(Pattern, Max, Offset, SortField, SortDir) ->
     Now = util:mk_timestamp(),
-    FilterFun = build_filter(lists:map(fun string:to_lower/1,
-				       Pattern)),
+    FilterFun = build_filter(string:to_lower(Pattern)),
     Fields = lists:map(fun string:to_lower/1,
 		       lists:map(fun atom_to_list/1,
 				 record_info(fields, browse_result))),
@@ -22,7 +21,8 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 				 length = Length,
 				 date = Date},
 		   Sorted) ->
-		       case FilterFun(Name) of
+		       NameLower = string:to_lower(Name),
+		       case FilterFun(NameLower) of
 			   true ->
 			       Age = Now - Date,
 			       {S, L, Speed} = tracker:tracker_info(Id),
@@ -51,14 +51,14 @@ build_filter(Pattern) ->
     {Expr, Rest} = lists:splitwith(fun($\s) -> false;
 				      (_) -> true
 				   end, Pattern),
-    {ok, RE} = re:compile(regexp:sh_to_awk("*" ++ Expr ++ "*"), [unicode, caseless]),
+    {ok, RE} = regexp:parse(regexp:sh_to_awk("*" ++ Expr ++ "*")),
     fun(Name) ->
 	    case (build_filter(Rest))(Name) of
 		true ->
 		    %% Check
-		    case re:run(Name, RE) of
+		    case regexp:first_match(Name, RE) of
 			nomatch -> false;
-			{match, _} -> true
+			{match, _, _} -> true
 		    end;
 		false ->
 		    false
