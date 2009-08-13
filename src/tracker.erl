@@ -202,7 +202,7 @@ collect_peer_stats() ->
 					   #peer{_ = '_'})
 	  end),
     io:format("peer_stats: ~p~n", [{Seeders4, Leechers4, Seeders6, Leechers6}]),
-    collectd:set_gauge(peers, inet_seeders, Seeders4),
-    collectd:set_gauge(peers, inet_leeders, Leechers4),
-    collectd:set_gauge(peers, inet6_seeders, Seeders6),
-    collectd:set_gauge(peers, inet6_leeders, Leechers6).
+    collectd:set_gauge(peers, inet_seeders, [Seeders4]),
+    collectd:set_gauge(peers, inet_leeders, [Leechers4]),
+    collectd:set_gauge(peers, inet6_seeders, [Seeders6]),
+    collectd:set_gauge(peers, inet6_leeders, [Leechers6]).
