@@ -16,7 +16,6 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 		0 -> exit(no_such_field);
 		N -> N + 1
 	    end,
-    io:format("~p ~p. in ~p~n", [SortField, SortN, Fields]),
     Sorted = torrent_search:fold(
 	       fun(#torrent_meta{name = Name,
 				 id = Id,

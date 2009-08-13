@@ -162,7 +162,6 @@ request(Req, 'GET', "browse/" ++ Path) ->
 				      "a" -> {asc, desc};
 				      "d" -> {desc, asc}
 				  end,
-    io:format("{Direction, OtherDirection} = ~p~n", [{Direction, OtherDirection}]),
     Offset = list_to_integer(OffsetS),
     Pattern = mochiweb_util:unquote(PatternEncoded),
     {TorrentMetas, TorrentTotal} = torrent_browse:search(Pattern,
@@ -336,7 +335,6 @@ request(Req, 'GET', "announce") ->
     
     IP = ?GET_REMOTE_ADDR,
     QS = Req:parse_qs(),
-    %%io:format("announce from ~p: ~p~n", [Req:get(peer), QS]),
     {value, {_, InfoHash1}} = lists:keysearch("info_hash", 1, QS),
     InfoHash = list_to_binary(InfoHash1),
     {value, {_, PeerId1}} = lists:keysearch("peer_id", 1, QS),
@@ -386,7 +384,6 @@ request(Req, 'GET', "announce") ->
 			end
 		end
 	end,
-    io:format("Announce reply: ~p~n",[Reply]),
     Bencoded = benc:to_binary(Reply),
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
@@ -417,7 +414,6 @@ request(Req, 'GET', "scrape") ->
 		      [{<<"min_request_interval">>, ?TRACKER_REQUEST_INTERVAL}]}
 		    ]
 	   end,
-    io:format("Scrape reply: ~p~n",[Reply]),
     Bencoded = benc:to_binary(Reply),
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
