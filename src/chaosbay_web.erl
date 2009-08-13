@@ -78,9 +78,15 @@ count_request_(What, {_, _, _, _, _, _, _, _}) ->
 			      SortName ->
 				  browse_link(SortName, OtherDirection, 0, Pattern);
 			      FieldS ->
-				  browse_link(FieldS, asc, 0, Pattern)
+				  browse_link(FieldS, column_default_direction(Field), 0, Pattern)
 			  end)).
-				  
+
+column_default_direction(speed) -> desc;
+column_default_direction(seeders) -> desc;
+column_default_direction(leechers) -> desc;
+column_default_direction(comments) -> desc;
+column_default_direction(_) -> asc.
+
 request(Req, 'GET', "add") ->
     ?COUNT_REQUEST(add_form),
     Body = [<<"
