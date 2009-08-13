@@ -38,7 +38,8 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 			       Sorted
 		       end
 	       end, sorted:new(SortN, SortDir, Max + Offset)),
-    sorted:to_list(Sorted).
+    Result = lists:nthtail(Offset, sorted:to_list(Sorted)),
+    {Result, sorted:get_total(Sorted)}.
 
 build_filter("") ->
     fun(_) -> true end;

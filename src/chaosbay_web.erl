@@ -76,16 +76,9 @@ count_request_(What, {_, _, _, _, _, _, _, _}) ->
 
 -define(COL_LINK(Field), (case atom_to_list(Field) of
 			      SortName ->
-				  "/browse/" ++
-				      SortName ++ "/" ++
-				      OtherDirection ++ "/" ++
-				      OffsetS ++ "/" ++
-				      PatternEncoded;
+				  browse_link(SortName, OtherDirection, 0, Pattern);
 			      FieldS ->
-				  "/browse/" ++
-				      FieldS ++ "/a/" ++
-				      OffsetS ++ "/" ++
-				      PatternEncoded
+				  browse_link(FieldS, asc, 0, Pattern)
 			  end)).
 				  
 request(Req, 'GET', "add") ->
@@ -160,14 +153,15 @@ request(Req, 'GET', "browse/" ++ Path) ->
     ?COUNT_REQUEST(browse),
     [SortName, DirectionS, OffsetS, PatternEncoded] = util:split_string(Path, $/, 4),
     {Direction, OtherDirection} = case DirectionS of
-				      "a" -> {asc, "d"};
-				      "d" -> {desc, "a"}
+				      "a" -> {asc, desc};
+				      "d" -> {desc, asc}
 				  end,
     Offset = list_to_integer(OffsetS),
+    io:format("Offset: ~p~n",[Offset]),
     Pattern = mochiweb_util:unquote(PatternEncoded),
-    TorrentMetas = torrent_browse:search(Pattern,
-					 ?RESULTSET_LENGTH, Offset,
-					 SortName, Direction),
+    {TorrentMetas, TorrentTotal} = torrent_browse:search(Pattern,
+							 ?RESULTSET_LENGTH, Offset,
+							 SortName, Direction),
     HTML =
 	[{table, [{"border", "1"}],
 	  [{tr, [{th, [{a, [{"href", ?COL_LINK(name)}], ["Name"]}]},
@@ -214,7 +208,14 @@ request(Req, 'GET', "browse/" ++ Path) ->
 				 {td, [integer_to_list(L)]},
 				 {td, [util:human_bandwidth(Speed)]}
 				]}
-		       end, TorrentMetas)]}],
+		       end, TorrentMetas)]},
+	 {p, [{"id", "pages"}],
+	  [{a, if PageOffset == Offset -> [{"id", "current"}];
+		  true -> [{"href", browse_link(SortName, Direction, PageOffset, Pattern)}]
+	       end,
+	    [lists:flatten(io_lib:format("~B", [PageOffset]))]}
+	   || PageOffset <- lists:seq(0, TorrentTotal, ?RESULTSET_LENGTH)]}
+	],
     Body = lists:map(fun html:to_iolist/1, HTML),
     html_ok(Req, Body);
 
@@ -430,7 +431,7 @@ request(Req, 'GET', {details, Name}) ->
 			  {dd, [util:human_length(Length)]},
 			  {dt, ["Info-Hash"]},
 			  {dd, [{"class", "code"}],
-			   [mochiweb_util:quote_plus(binary_to_list(Id))]},
+			   [urlencode(binary_to_list(Id))]},
 			  {dt, ["Seeders"]},
 			  {dd, [integer_to_list(S)]},
 			  {dt, ["Leechers"]},
@@ -530,6 +531,26 @@ link_to_torrent(Name) when is_binary(Name) ->
 link_to_torrent(Name) ->
     "/" ++ urlencode(Name) ++ ".torrent".
 
+browse_link(SortName, Direction, Offset, Pattern) when is_atom(SortName) ->
+    browse_link(atom_to_list(SortName), Direction, Offset, Pattern);
+browse_link(SortName, asc, Offset, Pattern) ->
+    browse_link(SortName, "a", Offset, Pattern);
+browse_link(SortName, desc, Offset, Pattern) ->
+    browse_link(SortName, "a", Offset, Pattern);
+browse_link(SortName, Direction, Offset, Pattern) when is_integer(Offset) ->
+    browse_link(SortName, Direction, integer_to_list(Offset), Pattern);
+browse_link(SortName, Direction, Offset, Pattern) ->
+    io:format("browse_link(~p, ~p, ~p, ~p) -> ~p~n", [SortName, Direction, Offset, Pattern,     "/browse/" ++
+	SortName ++ "/" ++
+	Direction ++ "/" ++
+	Offset ++ "/" ++
+	urlencode(Pattern)]),
+    "/browse/" ++
+	SortName ++ "/" ++
+	Direction ++ "/" ++
+	Offset ++ "/" ++
+	urlencode(Pattern).
+    
 urlencode(S) ->
     lists:flatten(
       lists:map(fun($+) -> "%20";

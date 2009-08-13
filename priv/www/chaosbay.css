@@ -4,7 +4,10 @@ body {
     background: white;
     color: black;
 }
-
+a {
+    text-decoration: none;
+    color: #7f0000;
+}
 div#head {
     background: black;
     color: white;
@@ -24,7 +27,6 @@ div#head p a#add:before {
 }
 div#head p a {
     color: white;
-    text-decoration: none;
 }
 div#head h1 {
     font-size: x-large;
@@ -33,7 +35,6 @@ div#head h1 {
 }
 div#head h1 a {
     color: white;
-    text-decoration: none;
 }
 
 div#content {
@@ -80,7 +81,6 @@ div#content table tr th {
 }
 div#content table tr th a {
     color: white;
-    text-decoration: none;
 }
 div#content table tr th:first-child {
     text-align: left;
@@ -116,6 +116,21 @@ div#content dl dt:after {
 }
 div#content dl dd {
     font-size: small;
+}
+p#pages {
+    margin: 2em auto;
+    text-align: center;
+    font-size: 50%;
+}
+p#pages a {
+    margin: 0.5em;
+    padding: 0.5em;
+    border: 1px solid #774;
+    background: #ffc;
+}
+p#pages a#current {
+    border: 1px solid #447;
+    background: #ccf;
 }
 div#content #comments {
     padding: 0em 1em;
