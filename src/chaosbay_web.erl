@@ -12,6 +12,7 @@
 -include("../include/comment.hrl").
 
 -define(TRACKER_REQUEST_INTERVAL, 60).
+-define(RESULTSET_LENGTH, 50).
 
 -define(MIME_XHTML, "application/xhtml+xml").
 -define(MIME_ATOM, "application/atom+xml").
@@ -130,7 +131,6 @@ request(Req, 'POST', "add") ->
 	invalid ->
 	    request(Req, 'GET', "add");
 	{error, ReasonS} ->
-	    %% TODO: return like 500 here
 	    HTML =
 		[{h2, ["Invalid stuff happened"]},
 		 {p, [{"class", "important error code"}], [ReasonS]}],
@@ -140,7 +140,19 @@ request(Req, 'POST', "add") ->
 
 request(Req, 'GET', "") ->
     ?COUNT_REQUEST(root),
-    TorrentMetas = torrent:recent(200),
+    Req:respond({301, [{"Location", chaosbay:absolute_path("/browse/age/a/0/")}], []});
+
+request(Req, 'GET', "browse/" ++ Path) ->
+    ?COUNT_REQUEST(browse),
+    [SortName, DirectionS, OffsetS, Pattern] = util:split_string(Path, $/, 4),
+    Direction = case DirectionS of
+		    "a" -> asc;
+		    "d" -> desc
+		end,
+    Offset = list_to_integer(OffsetS),
+    TorrentMetas = torrent_browse:search(Pattern,
+					 ?RESULTSET_LENGTH, Offset,
+					 list_to_atom(SortName), Direction),
     HTML =
 	[{table, [{"border", "1"}],
 	  [{tr, [{th, ["Name"]},
@@ -155,10 +167,12 @@ request(Req, 'GET', "") ->
 		  ["L"]},
 		 {th, ["Speed"]}
 		]}
-	   | lists:map(fun(#torrent_meta{name = Name,
-					 id = Id,
-					 length = Length,
-					 date = Date}) ->
+	   | lists:map(fun(#browse_result{name = Name,
+					  id = Id,
+					  length = Length,
+					  age = Age,
+					  seeders = S, leechers = L,
+					  speed = Speed}) ->
 			       {S, L, Speed} = tracker:tracker_info(Id),
 			       Class = case {S, L} of
 					   {0, 0} -> "dead";
@@ -175,7 +189,7 @@ request(Req, 'GET', "") ->
 					    {"class", "download"}],
 					["Get"]}]},
 				 {td, [util:human_length(Length)]},
-				 {td, [util:human_duration(util:mk_timestamp() - Date)]},
+				 {td, [util:human_duration(Age)]},
 				 {td, [{"style", if
 						     C == 0 -> "color: #aaa";
 						     true -> "font-weight:bold"

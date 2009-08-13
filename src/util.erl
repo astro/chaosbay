@@ -4,7 +4,8 @@
 	 human_length/1, human_bandwidth/1, human_duration/1,
 	 timestamp_to_iso8601/1,
 	 pmap/2, timeout/2,
-	 safe_mnesia_create_table/2, mnesia_fold_table_t/3]).
+	 safe_mnesia_create_table/2, mnesia_fold_table_t/3,
+	 split_string/3, list_index/2]).
 
 mk_timestamp() ->
     {MS, S, _} = erlang:now(),
@@ -117,3 +118,23 @@ mnesia_fold_table_t2(Fun, AccIn, {[], Cont}) ->
 mnesia_fold_table_t2(Fun, AccIn, {[Object | Rest], Cont}) ->
     AccOut = Fun(Object, AccIn),
     mnesia_fold_table_t2(Fun, AccOut, {Rest, Cont}).
+
+
+split_string(S, _Sep, 1) ->
+    [S];
+split_string(S, Sep, N) ->
+    case lists:splitwith(fun(Ch) when Ch == Sep -> false;
+			    (_) -> true
+			 end, S) of
+	{S1, [Sep | S2]} ->
+	    [S1 | split_string(S2, Sep, N - 1)];
+	{S, ""} ->
+	    [S]
+    end.
+
+list_index(_, []) ->
+    0;
+list_index(E, [E | _]) ->
+    1;
+list_index(E, [_ | R]) ->
+    list_index(E, R) + 1.

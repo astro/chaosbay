@@ -5,16 +5,39 @@
 
 -include("../include/torrent.hrl").
 
-search(Pattern, Max, Offset, SortN, SortDir) ->
-    FilterFun = build_filter(Pattern),
-    Sorted = torrent_search:fold(fun(#torrent_meta{name = Name} = TorrentMeta, Sorted) ->
-					 case FilterFun(Name) of
-					     true ->
-						 sorted:insert(Sorted, TorrentMeta);
-					     false ->
-						 Sorted
-					 end
-				 end, sorted:new(SortN, SortDir, Max + Offset)),
+search(Pattern, Max, Offset, SortField, SortDir) ->
+    Now = util:mk_timestamp(),
+    FilterFun = build_filter(lists:map(fun string:to_lower/1,
+				       Pattern)),
+    Fields = lists:map(fun string:to_lower/1,
+		       lists:map(fun atom_to_list/1,
+				 record_info(fields, torrent_meta))),
+    SortN = case util:list_index(SortField, Fields) of
+		0 -> exit(no_such_field);
+		N -> N
+	    end,
+    Sorted = torrent_search:fold(
+	       fun(#torrent_meta{name = Name,
+				 id = Id,
+				 length = Length,
+				 date = Date},
+		   Sorted) ->
+		       case FilterFun(Name) of
+			   true ->
+			       Age = Now - Date,
+			       {S, L, Speed} = tracker:tracker_info(Id),
+			       Result = #browse_result{name = Name,
+						       id = Id,
+						       length = Length,
+						       age = Age,
+						       seeders = S,
+						       leechers = L,
+						       speed = Speed},
+			       sorted:insert(Sorted, Result);
+			   false ->
+			       Sorted
+		       end
+	       end, sorted:new(SortN, SortDir, Max + Offset)),
     sorted:to_list(Sorted).
 
 build_filter("") ->
