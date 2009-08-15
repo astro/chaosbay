@@ -68,11 +68,17 @@ add(Filename, Upload) ->
 	    F = fun() ->
 			mnesia:write_lock_table(torrent_meta),
 			mnesia:write_lock_table(torrent_data),
+			%% Check if filename is already present
 			case mnesia:read({torrent_meta, NewFilename}) of
 			    [] ->
-				mnesia:write(TorrentMeta),
-				mnesia:write(TorrentData),
-				{ok, NewFilename};
+				case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
+				    [] ->
+					mnesia:write(TorrentMeta),
+					mnesia:write(TorrentData),
+					{ok, NewFilename};
+				    _ ->
+					exists
+				end;
 			    _ ->
 				exists
 			end
