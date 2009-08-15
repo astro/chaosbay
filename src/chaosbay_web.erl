@@ -196,7 +196,7 @@ request(Req, 'GET', "browse/" ++ Path) ->
 		 {th, [{"title", "Seeders"}],
 		  [{a, [{"href", ?COL_LINK(seeders)}], ["S"]}]},
 		 {th, [{"title", "Leechers"}],
-		  [{a, [{"href", ?COL_LINK(seeders)}], ["L"]}]},
+		  [{a, [{"href", ?COL_LINK(leechers)}], ["L"]}]},
 		 {th, [{a, [{"href", ?COL_LINK(speed)}], ["Speed"]}]}
 		]}
 	   | lists:map(fun(#browse_result{name = Name,
