@@ -345,11 +345,11 @@ request(Req, 'GET', "stats/" ++ Filename) ->
     ?COUNT_REQUEST(stats_img),
 
     Q = case Filename of
-	    "requests.png" -> "hostname=plug;plugin=erlang;plugin_instance=chaosbay;type=http_requests;begin=-86400";
-	    "traffic.png" -> "hostname=plug;plugin=erlang;plugin_instance=chaosbay;type=if_octets;type_instance=peers;begin=-86400";
-	    "peers.png" -> "hostname=plug;plugin=erlang;plugin_instance=chaosbay;type=peers;begin=-86400"
+	    "requests.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=http_requests begin=-86400";
+	    "traffic.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=if_octets type_instance=peers;begin=-86400";
+	    "peers.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=peers begin=-86400"
 	end,
-    Body = graph_cache:get_graph("/var/www/collection3/bin/graph.cgi '" ++ Q ++ "'"),
+    Body = graph_cache:get_graph("/var/www/collection3/bin/graph.cgi " ++ Q),
     Req:ok({"image/png", Body});
 
 request(Req, 'GET', "announce") ->

@@ -35,20 +35,23 @@ get_graph(Q) ->
 	{atomic, {result, R}} ->
 	    R;
 	{atomic, fetch} ->
-	    R = drop_cgi_header(os:cmd(Q)),
-	    mnesia:transaction(fun() ->
-				       [#cached{waiting = Waiting} = Cached] =
-					   mnesia:read(cached, Q),
-				       lists:foreach(fun(Waiter) when Waiter == I ->
-							     ignore;
-							(Waiter) ->
-							     Waiter ! {Q, R}
-						     end, Waiting),
-				       mnesia:write(Cached#cached{waiting = [],
-								  result = R,
-								  updated = util:mk_timestamp()})
-			       end),
-	    R;
+	    spawn(fun() ->
+			  R = drop_cgi_header(os:cmd(Q)),
+			  mnesia:transaction(fun() ->
+						     [#cached{waiting = Waiting} = Cached] =
+							 mnesia:read(cached, Q),
+						     lists:foreach(fun(Waiter) ->
+									   Waiter ! {Q, R}
+								   end, Waiting),
+						     mnesia:write(Cached#cached{waiting = [],
+										result = R,
+										updated = util:mk_timestamp()})
+					     end)
+		  end),
+	    receive
+		{Q, R} ->
+		    R
+	    end;
 	{atomic, wait} ->
 	    receive
 		{Q, R} ->
