@@ -13,20 +13,28 @@ div#head {
     color: white;
     padding: 0.2em 2em;
 }
-div#head p {
+div#head ul {
     margin: 0;
-    padding: 1em 0;
+    padding: 0;
     float: right;
     text-align: right;
-    background: black;
+    min-height: 4em;
+    list-style-type: none;
 }
-div#head p a#add:before {
+div#head ul li a#add:before {
     content: url(/static/add.png);
     display: inline;
     vertical-align: bottom;
 }
-div#head p a {
+div#head ul li a {
     color: white;
+}
+div#head ul li form input {
+    border: 1px solid black;
+    background-image: url(/static/system-search.png);
+    background-repeat: no-repeat;
+    background-position: left center;
+    padding-left: 22px;
 }
 div#head h1 {
     font-size: x-large;

@@ -180,19 +180,7 @@ request(Req, 'GET', "browse/" ++ Path) ->
 							 ?RESULTSET_LENGTH, Offset,
 							 SortName, Direction),
     HTML =
-	[{form, [{"id", "search"},
-		 {"method", "get"},
-		 {"action", "/search"}],
-	  [{input, [{"type", "text"},
-		    {"name", "q"},
-		    {"id", "q"},
-		    {"title", "All space-seperated words will be AND-match."},
-		    {"length", "40"},
-		    {"value", Pattern}], []},
-	   {input, [{"type", "submit"},
-		    {"value", "Search"}], []}
-	  ]},
-	 {table, [{"border", "1"}],
+	[{table, [{"border", "1"}],
 	  [{tr, [{th, [{a, [{"href", ?COL_LINK(name)}], ["Name"]}]},
 		 {th, [""]},
 		 {th, [{a, [{"href", ?COL_LINK(length)}], ["Size"]}]},
@@ -522,7 +510,14 @@ html_skeleton(Body) ->
   </head>
   <body>
     <div id='head'>
-      <p><a href='/add' id='add'>Add</a></p>
+      <ul>
+        <li><a href='/add' id='add'>Add</a></li>
+        <li><form id='search' method='get' action='/search'>
+               <input type='text' name='q' id='q'
+                      title='All space-seperated words will be AND-matched.' length='30'
+                      value=''/>
+            </form></li>
+      </ul>
       <h1><a href='/'>Chaos Bay</a></h1>
     </div>
     <div id='content'>
