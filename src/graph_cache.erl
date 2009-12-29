@@ -1,28 +1,28 @@
--module(http_cache).
+-module(graph_cache).
 
--export([init/0, get_url/1]).
+-export([init/0, get_graph/1]).
 
 
--record(cached, {url, result, updated = 0, waiting}).
+-record(cached, {q, result, updated = 0, waiting}).
 -define(CACHE_TTL, 120).
 
 init() ->
     mnesia:create_table(cached, [{attributes, record_info(fields, cached)}]).
 
-get_url(URL) ->
+get_graph(Q) ->
     I = self(),
     Now = util:mk_timestamp(),
     F = fun() ->
-		case mnesia:read(cached, URL) of
+		case mnesia:read(cached, Q) of
 		    [] ->
-			mnesia:write(#cached{url = URL,
+			mnesia:write(#cached{q = s,
 					     waiting = [I]}),
 			fetch;
 		    [#cached{updated = Updated, result = Result}]
 		    when Updated + ?CACHE_TTL > Now ->
 			{result, Result};
 		    [#cached{waiting = []}] ->
-			mnesia:write(#cached{url = URL,
+			mnesia:write(#cached{q = Q,
 					     waiting = [I]}),
 			fetch;
 		    [#cached{waiting = Waiting} = Cached] ->
@@ -35,20 +35,14 @@ get_url(URL) ->
 	{atomic, {result, R}} ->
 	    R;
 	{atomic, fetch} ->
-	    R = case catch http:request(URL) of
-		    {ok, {{_, 200, _}, _, Body}} ->
-			{ok, Body};
-		    E ->
-			io:format("GET ~p: ~p~n", [URL, E]),
-			error
-		end,
+	    R = drop_cgi_header(os:cmd(Q)),
 	    mnesia:transaction(fun() ->
 				       [#cached{waiting = Waiting} = Cached] =
-					   mnesia:read(cached, URL),
+					   mnesia:read(cached, Q),
 				       lists:foreach(fun(Waiter) when Waiter == I ->
 							     ignore;
 							(Waiter) ->
-							     Waiter ! {URL, R}
+							     Waiter ! {Q, R}
 						     end, Waiting),
 				       mnesia:write(Cached#cached{waiting = [],
 								  result = R,
@@ -57,7 +51,16 @@ get_url(URL) ->
 	    R;
 	{atomic, wait} ->
 	    receive
-		{URL, R} ->
+		{Q, R} ->
 		    R
 	    end
     end.
+
+drop_cgi_header([$\r, $\n, $\r, $\n | Body]) ->
+    Body;
+drop_cgi_header([$\n, $\n | Body]) ->
+    Body;
+drop_cgi_header([_ | Body]) ->
+    drop_cgi_header(Body);
+drop_cgi_header(_) ->
+    [].
