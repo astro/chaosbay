@@ -36,8 +36,12 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 				[] ->
 				    {0, 0, 0}
 				end,
-			Downspeed = DownDelta / (Now - Last),
-			Upspeed = UpDelta / (Now - Last),
+			{Downspeed, Upspeed} =
+				case Now - Last of
+					Time when Time > 0 ->
+						{DownDelta / Time, UpDelta / Time};
+					_ -> 0
+				    end,
 			%% write a completely new peer with the same
 			%% hash_peer because it has no state other
 			%% than downspeed & upspeed

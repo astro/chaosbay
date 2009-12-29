@@ -12,6 +12,10 @@
 -include("../include/comment.hrl").
 
 -define(TRACKER_REQUEST_INTERVAL, 60).
+-define(TRACKER_REQUEST_INTERVAL_JITTER, 0.4).
+-define(TRACKER_REQUEST_INTERVAL_JITTERED,
+	?TRACKER_REQUEST_INTERVAL +
+	trunc(((random:uniform() * 2) - 1) * ?TRACKER_REQUEST_INTERVAL * ?TRACKER_REQUEST_INTERVAL_JITTER)).
 -define(RESULTSET_LENGTH, 50).
 
 -define(MIME_XHTML, "application/xhtml+xml").
@@ -60,7 +64,8 @@ loop(Req) ->
 %% Internal API
 
 get_remote_addr_(Addr) ->
-    case inet:getaddr(Addr, inet6) of
+%%io:format("get_remote_addr_(~p)~n", [Addr]),
+    case inet_parse:ipv6_address(Addr) of
 	{ok, {0, 0, 0, 0, 0, 16#ffff, AB, CD}} ->
 	    {AB bsr 8, AB band 16#ff, CD bsr 8, CD band 16#ff};
 	{ok, Addr6} ->
@@ -152,8 +157,9 @@ request(Req, 'POST', "add") ->
     end;
 
 request(Req, 'GET', "") ->
-    ?COUNT_REQUEST(root),
-    Req:respond({301, [{"Location", browse_link(age, asc, 0, "")}], []});
+    %%%?COUNT_REQUEST(root),
+    %Req:respond({301, [{"Location", browse_link(age, asc, 0, "")}], []});
+    request(Req, 'GET', "browse/age/a/0/");
 
 request(Req, 'GET', "search") ->
     QS = Req:parse_qs(),
@@ -390,6 +396,7 @@ request(Req, 'GET', "announce") ->
 			end
 		end
 	end,
+    %%io:format("announce reply from ~p to ~p: ~p~n", [InfoHash, IP, Reply]),
     Bencoded = benc:to_binary(Reply),
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
@@ -420,6 +427,7 @@ request(Req, 'GET', "scrape") ->
 		      [{<<"min_request_interval">>, ?TRACKER_REQUEST_INTERVAL}]}
 		    ]
 	   end,
+    %%io:format("scrape reply for ~p: ~p~n", [InfoHash, Reply]),
     Bencoded = benc:to_binary(Reply),
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
@@ -572,7 +580,7 @@ urlencode(S) ->
 	       )).
 
 build_tracker_response(Peers) ->
-    [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
+    [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL_JITTERED},
      {<<"peers">>, [[{<<"peer id">>, PeerPeerId},
 		     {<<"ip">>, inet_parse:ntoa(PeerIP)},
 		     {<<"port">>, PeerPort}]
@@ -584,7 +592,7 @@ build_compact_tracker_response(Peers) ->
 				      ({_, {_, _, _, _, _, _, _, _}, _} = Peer, {Peers4, Peers6}) ->
 					   {Peers4, [Peer | Peers6]}
 				   end, {[], []}, Peers),
-    [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL},
+    [{<<"interval">>, ?TRACKER_REQUEST_INTERVAL_JITTERED},
      {<<"compact">>, 1},
      {<<"peers">>, list_to_binary([<<A:8, B:8, C:8, D:8, Port:16/big>>
 				   || {_, {A, B, C, D}, Port} <- Peers4])},
