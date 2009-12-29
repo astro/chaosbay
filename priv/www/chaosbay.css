@@ -167,6 +167,13 @@ div#content #comments {
     font-size: x-small;
     font-family: monospace;
 }
+ul.stats {
+    list-style-type: none;
+}
+ul.stats li {
+    margin: 0 auto;
+    max-width: 700px;
+}
 
 p#foot {
     font-size: xx-small;
