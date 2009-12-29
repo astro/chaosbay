@@ -539,7 +539,7 @@ html_skeleton(Body) ->
                       title='All space-seperated words will be AND-matched.' length='30'
                       value=''/>
             </form></li>
-        <li><a href='/stats' id='stats'>Stats</a></li>
+        <!--li><a href='/stats' id='stats'>Stats</a></li-->
       </ul>
       <h1><a href='/'>Chaos Bay</a></h1>
     </div>
