@@ -12,13 +12,13 @@ div#head {
     background: black;
     color: white;
     padding: 0.2em 2em;
+    min-height: 4.5em;
 }
 div#head ul {
     margin: 0;
     padding: 0;
     float: right;
     text-align: right;
-    min-height: 4em;
     list-style-type: none;
 }
 div#head ul li a#add:before {
@@ -131,6 +131,9 @@ div#content dl dt:after {
 }
 div#content dl dd {
     font-size: small;
+}
+a[rel='enclosure']:before {
+    content: url("/static/document-save.png");
 }
 p#pages {
     margin: 2em auto;
