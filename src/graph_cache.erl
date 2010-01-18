@@ -15,7 +15,7 @@ get_graph(Q) ->
     F = fun() ->
 		case mnesia:read(cached, Q) of
 		    [] ->
-			mnesia:write(#cached{q = s,
+			mnesia:write(#cached{q = Q,
 					     waiting = [I]}),
 			fetch;
 		    [#cached{updated = Updated, result = Result}]
@@ -33,10 +33,13 @@ get_graph(Q) ->
     TR = mnesia:transaction(F),
     case TR of
 	{atomic, {result, R}} ->
+		io:format("GRAPH cached ~p~n", [Q]),
 	    R;
 	{atomic, fetch} ->
+		io:format("GRAPH fetch ~p~n", [Q]),
 	    spawn(fun() ->
-			  R = drop_cgi_header(os:cmd(Q)),
+			  R = list_to_binary(drop_cgi_header(run(Q))),
+			io:format("GRAPH result ~p: ~B bytes~n", [Q, size(R)]),
 			  mnesia:transaction(fun() ->
 						     [#cached{waiting = Waiting} = Cached] =
 							 mnesia:read(cached, Q),
@@ -53,11 +56,24 @@ get_graph(Q) ->
 		    R
 	    end;
 	{atomic, wait} ->
+		io:format("GRAPH wait ~p~n", [Q]),
 	    receive
 		{Q, R} ->
 		    R
 	    end
     end.
+
+run(Cmd) ->
+	process_flag(trap_exit, true),
+	P = open_port({spawn, Cmd}, [stream]),
+	O = run_loop(P),
+	%%port_close(P),
+	O.
+run_loop(P) ->
+	receive
+		{P, {data, S}} -> S ++ run_loop(P);
+		{'EXIT', P, _} -> ""
+	end.
 
 drop_cgi_header([$\r, $\n, $\r, $\n | Body]) ->
     Body;

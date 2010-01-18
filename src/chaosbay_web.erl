@@ -52,7 +52,7 @@ loop(Req) ->
 			   [{h2, ["Invalid stuff happened"]},
 			    {p, [{"class", "important error code"}], [ReasonS]}],
 		       Body = lists:map(fun html:to_iolist/1, HTML),
-		       Req:respond({500, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body)});
+		       Req:respond({500, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body, "")});
 		   Response1 -> Response1
 	       end,
     T2 = util:mk_timestamp_us(),
@@ -153,7 +153,7 @@ request(Req, 'POST', "add") ->
 		[{h2, ["Invalid stuff happened"]},
 		 {p, [{"class", "important error code"}], [ReasonS]}],
 	    Body = lists:map(fun html:to_iolist/1, HTML),
-	    Req:respond({406, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body)})
+	    Req:respond({406, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body, "")})
     end;
 
 request(Req, 'GET', "") ->
@@ -231,7 +231,7 @@ request(Req, 'GET', "browse/" ++ Path) ->
 	   || {PageNumber, PageOffset} <- generate_pages(TorrentTotal)]}
 	],
     Body = lists:map(fun html:to_iolist/1, HTML),
-    html_ok(Req, Body);
+    html_ok(Req, Body, Pattern);
 
 request(Req, 'GET', "atom") ->
     ?COUNT_REQUEST(atom),
@@ -345,9 +345,9 @@ request(Req, 'GET', "stats/" ++ Filename) ->
     ?COUNT_REQUEST(stats_img),
 
     Q = case Filename of
-	    "requests.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=http_requests begin=-86400";
-	    "traffic.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=if_octets type_instance=peers;begin=-86400";
-	    "peers.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=peers begin=-86400"
+	    "requests.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=http_requests begin=-293760";
+	    "traffic.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=if_octets type_instance=peers begin=-293760";
+	    "peers.png" -> "hostname=plug plugin=erlang plugin_instance=chaosbay type=peers begin=-293760"
 	end,
     Body = graph_cache:get_graph("/var/www/collection3/bin/graph.cgi " ++ Q),
     Req:ok({"image/png", Body});
@@ -398,6 +398,7 @@ request(Req, 'GET', "announce") ->
 		    not_found ->
 			[{<<"failure reason">>, <<"No torrent registered for info_hash">>}];
 		    {peers, Peers} ->
+			%%io:format("ANNOUNCE ~p - ~B peers~n", [InfoHash, length(Peers)]),
 			case lists:keysearch("compact", 1, QS) of
 			    {value, _} ->
 				build_compact_tracker_response(Peers);
@@ -508,17 +509,20 @@ request(Req, 'GET', Path) ->
     end.
 
 html_ok(Req, Body) ->
-    Req:ok({?MIME_XHTML, html_skeleton(Body)}).
+    html_ok(Req, Body, "").
+html_ok(Req, Body, Pattern) ->
+    Req:ok({?MIME_XHTML, html_skeleton(Body, Pattern)}).
 
 html_not_found(Req) ->
     HTML =
 	[{h2, ["Not found"]},
 	 {p, [{"class", "important error code"}], ["Not pirated yet."]}],
     Body = lists:map(fun html:to_iolist/1, HTML),
-    Req:respond({404, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body)}).
+    Req:respond({404, [{"Content-type", ?MIME_XHTML}], html_skeleton(Body, "")}).
 
 
-html_skeleton(Body) ->
+html_skeleton(Body, Pattern) ->
+io:format("SKEL Pattern=~p~n", [Pattern]),
 	    [<<"<?xml version='1.0' encoding='utf-8'?>
 <!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN' 'DTD/xhtml1-strict.dtd'>
 <html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'>
@@ -537,9 +541,9 @@ html_skeleton(Body) ->
         <li><form id='search' method='get' action='/search'>
                <input type='text' name='q' id='q'
                       title='All space-seperated words will be AND-matched.' length='30'
-                      value=''/>
+                      value='">>, mochiweb_html:escape_attr(Pattern), <<"'/>
             </form></li>
-        <!--li><a href='/stats' id='stats'>Stats</a></li-->
+        <li><a href='/stats' id='stats'>Stats</a></li>
       </ul>
       <h1><a href='/'>Chaos Bay</a></h1>
     </div>
