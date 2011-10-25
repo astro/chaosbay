@@ -6,9 +6,7 @@
 
 
 init() ->
-    util:safe_mnesia_create_table(comment, [{type, bag},
-				  {disc_copies, [node()]},
-				  {attributes, record_info(fields, comment)}]).
+	ok.
 
 add(Name, Text) when is_list(Name) ->
     add(list_to_binary(Name), Text);
@@ -22,12 +20,9 @@ add(Name, Text) ->
 	    not_found;
 	_ ->
 	    Now = util:mk_timestamp(),
-	    F = fun() ->
-			mnesia:write(#comment{name = Name,
-					      date = Now,
-					      text = Text})
-		end,
-	    {atomic, _} = mnesia:transaction(F),
+		C = sql_conns:request_connection(),
+		pgsql:equery(C,"insert into comments (name, timestamp, comment) values ($1, $2, $3)", [Name, Now, Text]),
+		sql_conns:release_connection(C),
 	    ok
     end.
 
@@ -35,15 +30,13 @@ get_comments(Name) when is_list(Name) ->
     get_comments(list_to_binary(Name));
 
 get_comments(Name) ->
-    F = fun() ->
-		mnesia:read({comment, Name})
-	end,
-    {atomic, Comments} = mnesia:transaction(F),
-    S = lists:foldl(fun(#comment{} = C, S) ->
-			    sorted:insert(S, C)
-		    end, sorted:new(#comment.date, asc, unlimited), Comments),
-    sorted:to_list(S).
-
+	C = sql_conns:request_connection(),
+	{ok, _, E} = pgsql:equery(C,"select (name, timestamp, comment) from comments where name = $1 order by timestamp", [Name]),
+	sql_conns:release_connection(C),
+	lists:flatmap(fun(X) -> 
+				{{Name, Timestamp, Comment}} = X, 
+				[#comment{name=Name, date=Timestamp, text=Comment}] end, 
+		E).
 
 get_comments_count(Name) ->
     length(get_comments(Name)).
