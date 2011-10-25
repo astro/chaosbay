@@ -105,7 +105,7 @@ get_torrent_meta_by_id(Id) ->
 	case pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents where infohash = $1", [Id]) of
 		{ok, _, [{E}]} -> 
 			{Name, Id, Length, Date} = E,
-			Result = #torrent_meta{name = Name, id = Id, length = Length, date = Date};
+			Result = {ok, #torrent_meta{name = Name, id = Id, length = Length, date = Date}};
 		{error, _} -> 
 			Result = not_found
 	end,
@@ -113,10 +113,20 @@ get_torrent_meta_by_id(Id) ->
     Result.
 
 torrent_name_by_id_t(Id) ->
-    case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
-	[] -> not_found;
-	[#torrent_meta{name = Name}] -> {ok, Name}
-    end.
+	C = sql_conns:request_connection(),
+	case pgsql:equery(C, "select (name) from torrents where infohash = $1", [Id]) of
+		%{ok, _, [{E}]} -> 
+		{ok, _, [E]} -> 
+			{Name} = E,
+			Result = {ok,Name};
+		{ok, _, []} -> 
+			Result = not_found;
+		{error, _} -> 
+			Result = not_found
+	end,
+	sql_conns:release_connection(C),
+	Result.
+
 
 get_torrent_binary(Name) when is_list(Name) ->
     get_torrent_binary(list_to_binary(Name));
