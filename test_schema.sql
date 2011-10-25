@@ -26,8 +26,8 @@ GRANT ALL ON DATABASE chaosbaydb to chaosbay;
 
 \c chaosbaydb;
 
-CREATE TABLE torrents (infohash bigint primary key, name text, length integer, timestamp timestamp, data bytea);
+CREATE TABLE torrents (infohash bytea primary key, name text, length bigint, timestamp bigint, data bytea);
 
-CREATE TABLE comments (id serial unique primary key, name text, timestamp timestamp default now(), comment text);
+CREATE TABLE comments (id serial unique primary key, name text, timestamp bigint, comment text);
 
 -- CREATE TABLE peer (hash_peer, ip, port, downloaded, uploaded, left, upspeed, downspeed, last);
