@@ -169,6 +169,7 @@ request(Req, 'GET', "search") ->
 
 request(Req, 'GET', "browse/" ++ Path) ->
     ?COUNT_REQUEST(browse),
+	% TODO Koennte probleme geben, falls Input nicht aufgesplittet werden kann
     [SortName, DirectionS, OffsetS, PatternEncoded] = util:split_string(Path, $/, 4),
     {Direction, OtherDirection} = case DirectionS of
 				      "a" -> {asc, desc};
@@ -524,7 +525,7 @@ html_skeleton(Body) ->
 ">>, Body, <<"
     </div>
     <p id='foot'>
-— Powered by mochiweb &amp; mnesia —
+— Powered by mochiweb &amp; ... —
 <br/>
 Running on ">>,
 	     case nodes(visible) of
