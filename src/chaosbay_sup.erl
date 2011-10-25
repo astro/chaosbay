@@ -48,6 +48,9 @@ init([]) ->
     Port = case os:getenv("MOCHIWEB_PORT") of false -> 8000; N -> list_to_integer(N) end,   
     WebConfig = [{ip, Ip},
                  {port, Port}],
+    SqlConnections = {sql_conns,
+		     {sql_conns, start_link, []},
+		     permanent, 5000, worker, [sql_conns]},
     Web = {chaosbay_web,
            {chaosbay_web, start, [WebConfig]},
            permanent, 5000, worker, dynamic},
@@ -58,5 +61,5 @@ init([]) ->
 		     {torrent_search, start_link, []},
 		     permanent, 5000, worker, [torrent_search]},
 
-    Processes = [Web, TrackerCleaner, TorrentSearch],
+    Processes = [Web, SqlConnections, TrackerCleaner, TorrentSearch],
     {ok, {{one_for_one, 10, 10}, Processes}}.
