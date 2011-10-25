@@ -5,63 +5,40 @@
 
 -include("../include/torrent.hrl").
 
+% TODO: description as erlang docu
+% Input
+% 	Pattern = Search pattern name, as list
+% 	Max = Max results (integer)
+% 	Offset = Offset (integer)
+% 	SortField = sort field as list. May contain name, length, age, comments, seeders, leechers, speed
+% 	SortDir = atom (asc, desc)
+% Output
+% 	Name (binary),
+% 	InfoHash (binary),
+% 	Length (integer),
+% 	Age (integer),
+% 	comments (integer),
+% 	seeders (integer),
+% 	leechers (integer),
+% 	speed (integer)
 search(Pattern, Max, Offset, SortField, SortDir) ->
+	io:format("search,Args: ~w ~w ~w ~w ~w~n",[Pattern, Max, Offset, SortField, SortDir]),
     Now = util:mk_timestamp(),
-    FilterFun = build_filter(string:to_lower(Pattern)),
-    Fields = lists:map(fun string:to_lower/1,
-		       lists:map(fun atom_to_list/1,
-				 record_info(fields, browse_result))),
-    SortN = case util:list_index(SortField, Fields) of
-		0 -> exit(no_such_field);
-		N -> N + 1
-	    end,
-    Sorted = torrent_search:fold(
-	       fun(#torrent_meta{name = Name,
-				 id = Id,
-				 length = Length,
-				 date = Date},
-		   Sorted) ->
-		       NameLower = string:to_lower(binary_to_list(Name)),
-		       case FilterFun(NameLower) of
-			   true ->
-			       Age = Now - Date,
-			       {S, L, Speed} = tracker:tracker_info(Id),
-			       Comments = comment:get_comments_count(Name),
-			       Result = #browse_result{name = Name,
-						       id = Id,
-						       length = Length,
-						       comments = Comments,
-						       age = Age,
-						       seeders = S,
-						       leechers = L,
-						       speed = Speed},
-			       sorted:insert(Sorted, Result);
-			   false ->
-			       Sorted
-		       end
-	       end, sorted:new(SortN, SortDir, Max + Offset)),
-    Result = lists:nthtail(Offset, sorted:to_list(Sorted)),
-    {Result, sorted:get_total(Sorted)}.
-
-build_filter("") ->
-    fun(_) -> true end;
-build_filter([$\s | Pattern]) ->
-    build_filter(Pattern);
-build_filter(Pattern) ->
-    {Expr, Rest} = lists:splitwith(fun($\s) -> false;
-				      (_) -> true
-				   end, Pattern),
-    fun(Name) ->
-	    case (build_filter(Rest))(Name) of
-		true ->
-		    %% Check
-		    case string:str(Name, Expr) of
-			0 -> false;
-			_ -> true
-		    end;
-		false ->
-		    false
-	    end
-    end.
-	    
-    
+	C = sql_conns:request_connection(),
+	{_, _, E} = pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents", []),
+	Result = lists:flatmap(fun(X) -> 
+					{{Name, InfoHash, Length, Timestamp}} = X, 
+					{_, _, [{Comments}]} = pgsql:equery(C, "select count(*) from comments where name = $1", [Name]),
+					[#browse_result{
+						name = Name,
+						id = InfoHash,
+						length = Length,
+						comments = Comments,
+						age = Now - Timestamp,
+						seeders = 0,
+						leechers = 0,
+						speed = 0}]
+				  end, 
+			E),
+	sql_conns:release_connection(C),
+	{Result, length(Result)}.
