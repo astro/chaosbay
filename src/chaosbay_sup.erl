@@ -57,9 +57,6 @@ init([]) ->
     TrackerCleaner = {tracker_cleaner,
 		      {tracker, cleaner_start_link, []},
 		      permanent, 5000, worker, [tracker]},
-    TorrentSearch = {torrent_search,
-		     {torrent_search, start_link, []},
-		     permanent, 5000, worker, [torrent_search]},
 
-    Processes = [Web, SqlConnections, TrackerCleaner, TorrentSearch],
+    Processes = [Web, SqlConnections, TrackerCleaner],
     {ok, {{one_for_one, 10, 10}, Processes}}.
