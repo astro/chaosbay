@@ -1,9 +1,13 @@
 Doesn't require OpenTracker anymore, tracker data is being kept in Mnesia now.
 
-You will need erlang-collectd from: http://github.com/astro/erlang-collectd/
-You will need MochiWeb from: https://github.com/mochi/mochiweb
-Bind address and port may be specified by environment variables MOCHIWEB_IP and
-MOCHIWEB_PORT.
+- You will need erlang-collectd from: http://github.com/astro/erlang-collectd/
+- You will need MochiWeb from: https://github.com/mochi/mochiweb
+  - Bind address and port may be specified by environment variables MOCHIWEB_IP and
+    MOCHIWEB_PORT.
+  - You need to set the environment variable 'http_base' for the chaosbay application
+- You furthermore need epqsql https://github.com/wg/epgsql
+  - Use test_schema.sql to create the required tables
+  - Still uses hard coded credential (change in sql_conns.erl)
 
 To configure, run:
 
