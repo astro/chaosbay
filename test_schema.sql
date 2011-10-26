@@ -30,4 +30,6 @@ CREATE TABLE torrents (infohash bytea primary key, name text, length bigint, tim
 
 CREATE TABLE comments (id serial unique primary key, name text, timestamp bigint, comment text);
 
+CREATE FUNCTION count_comments(TEXT) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM comments WHERE name = $1;$$ LANGUAGE SQL;
+
 -- CREATE TABLE peer (hash_peer, ip, port, downloaded, uploaded, left, upspeed, downspeed, last);
