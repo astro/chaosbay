@@ -40,7 +40,7 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 				case Now - Last of
 					Time when Time > 0 ->
 						{DownDelta / Time, UpDelta / Time};
-					_ -> 0
+					_ -> {0,0}
 				    end,
 			%% write a completely new peer with the same
 			%% hash_peer because it has no state other

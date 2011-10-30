@@ -1,7 +1,7 @@
 Doesn't require OpenTracker anymore, tracker data is being kept in Mnesia now.
 
-
-You will need MochiWeb from: http://code.google.com/p/mochiweb/
+You will need erlang-collectd from: http://github.com/astro/erlang-collectd/
+You will need MochiWeb from: https://github.com/mochi/mochiweb
 Bind address and port may be specified by environment variables MOCHIWEB_IP and
 MOCHIWEB_PORT.
 
