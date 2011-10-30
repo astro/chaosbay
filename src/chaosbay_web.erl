@@ -169,7 +169,7 @@ request(Req, 'GET', "search") ->
 
 request(Req, 'GET', "browse/" ++ Path) ->
     ?COUNT_REQUEST(browse),
-	% TODO Koennte probleme geben, falls Input nicht aufgesplittet werden kann
+	% SortField muss in torrent_browse noch sanatized werden!
     [SortName, DirectionS, OffsetS, PatternEncoded] = util:split_string(Path, $/, 4),
     {Direction, OtherDirection} = case DirectionS of
 				      "a" -> {asc, desc};

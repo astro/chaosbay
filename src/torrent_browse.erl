@@ -17,8 +17,21 @@
 search(Pattern, Max, Offset, SortField, SortDir) ->
 	io:format("search,Args: ~w ~w ~w ~w ~w~n",[Pattern, Max, Offset, SortField, SortDir]),
     Now = util:mk_timestamp(),
+	SanatizedSortField = sanatize_sortField(SortField),
 	C = sql_conns:request_connection(),
-	MatchingTorrents = ordered_search(C, Pattern, Now, Max, Offset, SortField, SortDir),
+	case Pattern of 
+		E when is_list(E), E =/= [] ->
+			io:format("Pattern matching ~w ",[E]),
+			SQLSearchPattern = "%" ++ E ++ "%",	
+			SQLStatement = "select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents "++ 
+							"where name ilike $2 order by " ++ SanatizedSortField ++ " " ++ atom_to_list(SortDir) ++ 
+							" limit $3 offset $4",
+			{_, _, MatchingTorrents} = pgsql:equery(C, SQLStatement, [Now, SQLSearchPattern, Max, Offset]);
+		_ ->
+			SQLStatement = "select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by "
+	   							++ SanatizedSortField ++ " " ++ atom_to_list(SortDir) ++	" limit $2 offset $3", 
+		{_, _, MatchingTorrents} = pgsql:equery(C, SQLStatement, [Now, Max, Offset])
+	end,
 	sql_conns:release_connection(C),
 	Result = lists:flatmap(fun(X) -> 
 					{{Name, InfoHash, Length, CommentCount, Age}} = X, 
@@ -35,61 +48,14 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 			MatchingTorrents),
 	{Result, length(Result)}.
 
-% 	SortField = sort field as list. May contain name, length, age, comments, seeders, leechers, speed
-ordered_search(C, [], Now, Max, Offset, "name", asc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by name asc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-ordered_search(C, [], Now, Max, Offset, "name", desc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by name desc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
 
-ordered_search(C, [], Now, Max, Offset, "length", asc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by length asc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-ordered_search(C, [], Now, Max, Offset, "length", desc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by length desc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-	
-ordered_search(C, [], Now, Max, Offset, "age", asc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by timestamp asc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-ordered_search(C, [], Now, Max, Offset, "age", desc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by timestamp desc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-
-ordered_search(C, [], Now, Max, Offset, "comments", asc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by count_comments(name) asc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-ordered_search(C, [], Now, Max, Offset, "comments", desc) ->
-	{_, _, MatchingTorrents} = pgsql:equery(C, 
-		"select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by count_comments(name) desc limit $2 offset $3", 
-		[Now, Max, Offset]),
-		MatchingTorrents;
-
-ordered_search(C, [], Now, Max, Offset, _SortField, SortDir) ->
-	ordered_search(C, [], Now, Max, Offset, "name", SortDir);
-
-ordered_search(C, Pattern, Now, Max, Offset, "name", asc) ->
-			SearchPattern = "%" ++ Pattern ++ "%",	
-			{_, _, MatchingTorrents} = pgsql:equery(C, 
-				"select (name, infohash, length, count_comments(name) as comments, $1 - timestamp as age) from torrents where name ilike $2 order by name asc limit $3 offset $4", [Now, SearchPattern, Max, Offset]),
-			MatchingTorrents;
-ordered_search(C, Pattern, Now, Max, Offset, "name", desc) ->
-			SearchPattern = "%" ++ Pattern ++ "%",	
-			{_, _, MatchingTorrents} = pgsql:equery(C, 
-				"select (name, infohash, length, count_comments(name) as comments, $1 - timestamp as age) from torrents where name ilike $2 order by name desc limit $3 offset $4", [Now, SearchPattern, Max, Offset]),
-			MatchingTorrents.
+sanatize_sortField(SortField) when SortField =:= "age" ->
+	"timestamp";
+sanatize_sortField(SortField) when SortField =:= "comments" ->
+	"count_comments(name)";
+sanatize_sortField(SortField) when SortField =:= "length" ->
+	"length";
+sanatize_sortField(SortField) when SortField =:= "name" ->
+	"name";
+sanatize_sortField(_)  ->
+	"timestamp".
