@@ -15,34 +15,32 @@
 % Output
 %   list of #browse_result records
 search(Pattern, Max, Offset, SortField, SortDir) ->
-	io:format("search,Args: ~w ~w ~w ~w ~w~n",[Pattern, Max, Offset, SortField, SortDir]),
     Now = util:mk_timestamp(),
 	SanatizedSortField = sanatize_sortField(SortField),
 	C = sql_conns:request_connection(),
 	case Pattern of 
 		E when is_list(E), E =/= [] ->
-			io:format("Pattern matching ~w ",[E]),
 			SQLSearchPattern = "%" ++ E ++ "%",	
-			SQLStatement = "select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents "++ 
+			SQLStatement = "select (name, infohash, length, count_comments(name), $1 - timestamp, count_seeders(infohash), count_leechers(infohash)) from torrents "++ 
 							"where name ilike $2 order by " ++ SanatizedSortField ++ " " ++ atom_to_list(SortDir) ++ 
 							" limit $3 offset $4",
 			{_, _, MatchingTorrents} = pgsql:equery(C, SQLStatement, [Now, SQLSearchPattern, Max, Offset]);
 		_ ->
-			SQLStatement = "select (name, infohash, length, count_comments(name), $1 - timestamp) from torrents order by "
+			SQLStatement = "select (name, infohash, length, count_comments(name), $1 - timestamp, count_seeders(infohash), count_leechers(infohash)) from torrents order by "
 	   							++ SanatizedSortField ++ " " ++ atom_to_list(SortDir) ++	" limit $2 offset $3", 
 		{_, _, MatchingTorrents} = pgsql:equery(C, SQLStatement, [Now, Max, Offset])
 	end,
 	sql_conns:release_connection(C),
 	Result = lists:flatmap(fun(X) -> 
-					{{Name, InfoHash, Length, CommentCount, Age}} = X, 
+					{{Name, InfoHash, Length, CommentCount, Age, Seeders, Leechers}} = X, 
 					[#browse_result{
 						name = Name,
 						id = InfoHash,
 						length = Length,
 						comments = CommentCount,
 						age = Age,
-						seeders = 0,
-						leechers = 0,
+						seeders = Seeders,
+						leechers = Leechers,
 						speed = 0}]
 				  end, 
 			MatchingTorrents),
@@ -53,6 +51,12 @@ sanatize_sortField(SortField) when SortField =:= "age" ->
 	"timestamp";
 sanatize_sortField(SortField) when SortField =:= "comments" ->
 	"count_comments(name)";
+sanatize_sortField(SortField) when SortField =:= "leechers" ->
+	"count_seeders(infohash)";
+sanatize_sortField(SortField) when SortField =:= "seeders" ->
+	"count_seeders(infohash)";
+%sanatize_sortField(SortField) when SortField =:= "speed" ->
+%	"count_downspeed(downspeed)";
 sanatize_sortField(SortField) when SortField =:= "length" ->
 	"length";
 sanatize_sortField(SortField) when SortField =:= "name" ->

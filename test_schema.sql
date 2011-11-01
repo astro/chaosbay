@@ -34,3 +34,9 @@ CREATE TABLE tracker (infohash BYTEA, peerid BYTEA, ip bytea, port INTEGER, down
 	upspeed REAL, downspeed REAL, last BIGINT, PRIMARY KEY (infohash, peerid));
 
 CREATE FUNCTION count_comments(TEXT) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM comments WHERE name = $1;$$ LANGUAGE SQL;
+
+CREATE FUNCTION count_seeders(BYTEA) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM tracker WHERE infohash = $1 and leftover = 0;$$ LANGUAGE SQL;
+
+CREATE FUNCTION count_leechers(BYTEA) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM tracker WHERE infohash = $1 and leftover > 0;$$ LANGUAGE SQL;
+
+CREATE FUNCTION count_downspeed(BYTEA) RETURNS REAL AS $$ SELECT SUM(downspeed) FROM tracker WHERE infohash = $1;$$ LANGUAGE SQL;
