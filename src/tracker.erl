@@ -74,7 +74,7 @@ tracker_request(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
 		  fun(#peer{hash_peer = {_, PeerPeerId}}) ->
 			  PeerId =/= PeerPeerId
 		  end, AllPeers),
-		%%io:format("PeersWithoutMe: ~p~n", [PeersWithoutMe]),
+		%%%%io:format("PeersWithoutMe: ~p~n", [PeersWithoutMe]),
 	    NeededPeers =
 		case Left of
 		    %% Nothing left: seeder
@@ -140,8 +140,9 @@ dirty_hash_peers(Infohash) ->
 	C = sql_conns:request_connection(),
   {_, _, E} = pgsql:equery(C, "SELECT peerid, ip, port, downloaded, uploaded, leftover, upspeed, downspeed, last FROM tracker WHERE infohash = $1",[Infohash]),
   sql_conns:release_connection(C),
+	
 	L = [ #peer{ hash_peer={Infohash, Peerid}, 
-					 ip = IP,
+					 ip = convert_ip(SQLIP),
 					 port = Port,
 					 downloaded = Downloaded,
 					 uploaded = Uploaded,
@@ -149,7 +150,7 @@ dirty_hash_peers(Infohash) ->
 					 upspeed = Upspeed,
 					 downspeed = Downspeed,
 					 last = Last } 
-		|| {Peerid, IP, Port, Downloaded, Uploaded, Left, Upspeed, Downspeed, Last} <- E ],
+		|| {Peerid, SQLIP, Port, Downloaded, Uploaded, Left, Upspeed, Downspeed, Last} <- E ],
 	L.
 
 
@@ -185,7 +186,8 @@ cleaner_loop() ->
 		length(ObsoletePeers)
 	end,
     {atomic, N} = mnesia:transaction(F),
-    error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
+% Reenable after PSQL TODO
+%    error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
 
     collect_peer_stats(),
 
@@ -218,7 +220,7 @@ collect_peer_stats() ->
 			       {0, 0, 0, 0},
 			       peer)
 	  end),
-    io:format("peer_stats: ~p~n", [{Seeders4, Leechers4, Seeders6, Leechers6}]),
+    %io:format("peer_stats: ~p~n", [{Seeders4, Leechers4, Seeders6, Leechers6}]),
     collectd:set_gauge(peers, inet_seeders, [Seeders4]),
     collectd:set_gauge(peers, inet_leechers, [Leechers4]),
     collectd:set_gauge(peers, inet6_seeders, [Seeders6]),
