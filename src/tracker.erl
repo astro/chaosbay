@@ -51,9 +51,9 @@ insert_or_update_peer_info(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded,
 							_ -> {0,0}
 							end,
 					pgsql:equery(C, 
-						"update tracker (infohash, peerid, ip, port, downloaded, uploaded, leftover, downspeed, upspeed, last)" ++
-						" values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", 
-						[HashId, PeerId, SQLIP, Port, Downloaded, Uploaded, Left, Downspeed, Upspeed, Now])
+						"update tracker set (downloaded, uploaded, leftover, downspeed, upspeed, last) =" ++
+						"($1, $2, $3, $4, $5, $6) where infohash = $7 and peerid = $8", 
+						[Downloaded, Uploaded, Left, Downspeed, Upspeed, Now, HashId, PeerId])
 				end,
 			sql_conns:release_connection(C),
 			{ok, DownDelta, UpDelta}
