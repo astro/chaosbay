@@ -19,8 +19,19 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {connections=[]}).
+-record(state, {connections=[], 
+				db_host = undefined,
+				db_port = undefined,
+				db_name = undefined,
+				db_user = undefined,
+				db_pass = undefined
+			}).
 -define(SERVER, ?MODULE).
+-define(DB_DEFAULT_HOST, "localhost").
+-define(DB_DEFAULT_PORT, "5432").
+-define(DB_DEFAULT_NAME, "chaosbaydb").
+-define(DB_DEFAULT_USER, "chaosbay").
+-define(DB_DEFAULT_PASS, "chaosbay").
 
 %%====================================================================
 %% API
@@ -43,7 +54,32 @@ release_connection(C) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-  {ok, #state{}}.
+	DB_Host = case application:get_env(chaosbay, db_host) of
+		undefined -> ?DB_DEFAULT_HOST;
+		E1 -> E1
+	end,
+	DB_Port = case application:get_env(chaosbay, db_port) of
+		undefined -> ?DB_DEFAULT_PORT;
+		E2 -> E2
+	end,
+	DB_Name = case application:get_env(chaosbay, db_name) of
+		undefined -> ?DB_DEFAULT_NAME;
+		E3 -> E3
+	end,
+	DB_User = case application:get_env(chaosbay, db_user) of
+		undefined -> ?DB_DEFAULT_USER;
+		E4 -> E4
+	end,
+	DB_Pass = case application:get_env(chaosbay, db_pass) of
+		undefined -> ?DB_DEFAULT_PASS;
+		E5 -> E5
+	end,
+  {ok, #state{
+	  db_host = DB_Host,
+  	  db_port = DB_Port,
+  	  db_name = DB_Name,
+  	  db_user = DB_User,
+  	  db_pass = DB_Pass}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -57,7 +93,7 @@ init([]) ->
 handle_call(request_connection, _From, State) ->
   case State#state.connections of
 	[] -> 
-		{ok, C} = pgsql:connect("localhost", "klobs", "chaosbay", [{database, "chaosbay"}]),
+		{ok, C} = pgsql:connect("localhost", "klobs", "chaosbay", [{database, "chaosbaydb"}, {port, 5432}]),
 		NState = State,
 		C;
 	[C|H] ->

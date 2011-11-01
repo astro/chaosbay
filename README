@@ -6,11 +6,31 @@ Doesn't require OpenTracker anymore, tracker data is being kept in Mnesia now.
     MOCHIWEB_PORT.
   - You need to set the environment variable 'http_base' for the chaosbay application
 - You furthermore need epqsql https://github.com/wg/epgsql
-  - Use test_schema.sql to create the required tables
-  - Still uses hard coded credential (change in sql_conns.erl)
+  - Use chaosbay_sql_schema.sql to create the required tables
+  - Use a postgres database >= 9.0
 
 To configure, run:
 
 application:set_env(chaosbay, http_base, "http://...").
 torrent:reset_tracker_urls().
 
+
+Use 
+	application:set_env(chaosbay, db_host, "<your hostname here>"). 
+to specify you SQL-Server (localhost is default)
+
+Use 
+	application:set_env(chaosbay, db_port, "<your port number>").
+to specify SQL-Server's port. (5432 is default)
+
+Use 
+	application:set_env(chaosbay, db_name, "<your db name>").
+to specify the data base name. (chaosbaydb is default)
+
+Use 
+	application:set_env(chaosbay, db_user, "<your chaosbay db user>").
+to specify the chaosbay data base user. ("chaosbay" is default)
+
+Use 
+	application:set_env(chaosbay, db_pass, "<your password here>").
+to specify the db user's password. ("chaosbay" is default)
