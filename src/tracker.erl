@@ -201,25 +201,12 @@ cleaner_loop() ->
 
 
 collect_peer_stats() ->
-    {atomic, {Seeders4, Leechers4, Seeders6, Leechers6}} =
-	mnesia:transaction(
-	  fun() ->
-		  mnesia:foldl(fun(#peer{ip = {_, _, _, _}, left = 0},
-				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-				       {Seeders4 + 1, Leechers4, Seeders6, Leechers6};
-				  (#peer{ip = {_, _, _, _}},
-				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-				       {Seeders4, Leechers4 + 1, Seeders6, Leechers6};
-				  (#peer{left = 0},
-				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-				       {Seeders4, Leechers4, Seeders6 + 1, Leechers6};
-				  (#peer{},
-				   {Seeders4, Leechers4, Seeders6, Leechers6}) ->
-				       {Seeders4, Leechers4, Seeders6, Leechers6 + 1}
-			       end,
-			       {0, 0, 0, 0},
-			       peer)
-	  end),
+	C = sql_conns:request_connection(),
+	{_,_, [{Seeders4}]} = pgsql:equery(C,"select count(*) from tracker where leftover = 0 and length(ip) = 4"),
+	{_,_, [{Leechers4}]} = pgsql:equery(C,"select count(*) from tracker where leftover > 0 and length(ip) = 4"),
+	{_,_, [{Seeders6}]} = pgsql:equery(C,"select count(*) from tracker where leftover = 0 and length(ip) = 16"),
+	{_,_, [{Leechers6}]} = pgsql:equery(C,"select count(*) from tracker where leftover > 0 and length(ip) = 16"),
+	sql_conns:release_connection(C),
     %io:format("peer_stats: ~p~n", [{Seeders4, Leechers4, Seeders6, Leechers6}]),
     collectd:set_gauge(peers, inet_seeders, [Seeders4]),
     collectd:set_gauge(peers, inet_leechers, [Leechers4]),
