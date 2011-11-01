@@ -12,6 +12,9 @@
 
 -define(RESPONSE_PEER_COUNT, 10).
 
+init() ->
+	ok.
+
 convert_ip({A,B,C,D}) ->
 	<<A:8, B:8, C:8, D:8>>;
 convert_ip({A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P}) ->
@@ -22,10 +25,6 @@ convert_ip(E) when is_binary(E), size(E) == 4 ->
 convert_ip(E) when is_binary(E), size(E) == 16 ->
 	<<A:8, B:8, C:8, D:8, E:8, F:8, G:8, H:8, I:8, J:8, K:8, L:8, M:8, N:8, O:8, P:8>> = E,
 	{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P}.
-
-
-init() ->
-    util:safe_mnesia_create_table(peer, [{attributes, record_info(fields, peer)}]).
 
 insert_or_update_peer_info(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
     Now = util:mk_timestamp(),
@@ -174,20 +173,10 @@ cleaner_start_link() ->
 cleaner_loop() ->
     Now = util:mk_timestamp(),
     MinLast = Now - ?PEER_MAX_AGE,
-    F = fun() ->
-		mnesia:write_lock_table(peer),
-		ObsoletePeers =
-		    mnesia:select(peer,
-				  [{#peer{last = '$1',
-					  _ = '_'},
-				    [{'<', '$1', {const, MinLast}}],
-				    ['$_']}]),
-		lists:foreach(fun mnesia:delete_object/1, ObsoletePeers),
-		length(ObsoletePeers)
-	end,
-    {atomic, N} = mnesia:transaction(F),
-% Reenable after PSQL TODO
-%    error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
+	C = sql_conns:request_connection(),
+	{ok, N} = pgsql:equery(C, "DELETE FROM tracker where last < $1", [MinLast]),
+	sql_conns:release_connection(C),
+    error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
 
     collect_peer_stats(),
 
