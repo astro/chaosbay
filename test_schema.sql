@@ -26,10 +26,11 @@ GRANT ALL ON DATABASE chaosbaydb to chaosbay;
 
 \c chaosbaydb;
 
-CREATE TABLE torrents (infohash bytea primary key, name text, length bigint, timestamp bigint, data bytea);
+CREATE TABLE torrents (infohash BYTEA PRIMARY KEY, name TEXT, length BIGINT, timestamp BIGINT, data BYTEA);
 
-CREATE TABLE comments (id serial unique primary key, name text, timestamp bigint, comment text);
+CREATE TABLE comments (id SERIAL UNIQUE PRIMARY KEY, name TEXT, timestamp BIGINT, comment TEXT);
+
+CREATE TABLE tracker (infohash BYTEA, peerid BYTEA, ip bytea, port INTEGER, downloaded BIGINT, uploaded BIGINT, leftover BIGINT, 
+	upspeed REAL, downspeed REAL, last BIGINT, PRIMARY KEY (infohash, peerid));
 
 CREATE FUNCTION count_comments(TEXT) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM comments WHERE name = $1;$$ LANGUAGE SQL;
-
--- CREATE TABLE peer (hash_peer, ip, port, downloaded, uploaded, left, upspeed, downspeed, last);

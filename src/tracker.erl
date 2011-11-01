@@ -12,50 +12,59 @@
 
 -define(RESPONSE_PEER_COUNT, 10).
 
+convert_ip({A,B,C,D}) ->
+	<<A:8, B:8, C:8, D:8>>;
+convert_ip({A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P}) ->
+	<<A:8, B:8, C:8, D:8, E:8, F:8, G:8, H:8, I:8, J:8, K:8, L:8, M:8, N:8, O:8, P:8>>;
+convert_ip(E) when is_binary(E), size(E) == 4 ->
+	<<A:8, B:8, C:8, D:8>> = E,
+	{A,B,C,D};
+convert_ip(E) when is_binary(E), size(E) == 16 ->
+	<<A:8, B:8, C:8, D:8, E:8, F:8, G:8, H:8, I:8, J:8, K:8, L:8, M:8, N:8, O:8, P:8>> = E,
+	{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P}.
+
 
 init() ->
     util:safe_mnesia_create_table(peer, [{attributes, record_info(fields, peer)}]).
 
-
-tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
+insert_or_update_peer_info(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
     Now = util:mk_timestamp(),
-    F = fun() ->
-		%% look if exsits before lock
-		case torrent:torrent_name_by_id_t(HashId) of
-		    not_found -> not_found;
-		    {ok, _} ->
-			mnesia:write_lock_table(peer),
-			{DownDelta, UpDelta, Last} =
-			    case mnesia:read({peer, {HashId, PeerId}}) of
-				[#peer{downloaded = DownloadedOld,
-				       uploaded = UploadedOld,
-				       last = Last1}] ->
-				    {lists:max([Downloaded - DownloadedOld, 0]),
-				     lists:max([Uploaded - UploadedOld, 0]),
-				     Last1};
-				[] ->
-				    {0, 0, 0}
+	C = sql_conns:request_connection(),
+	SQLIP = convert_ip(ErlangIP),
+	case torrent:torrent_name_by_id_t(HashId) of
+		not_found -> not_found;
+		{ok, _} ->
+			case pgsql:equery(C, "SELECT downloaded, uploaded, last FROM tracker WHERE infohash = $1 AND PeerId = $2", 
+					[HashId, PeerId]) of
+				{_, _, []} ->
+					pgsql:equery(C, 
+						"insert into tracker (infohash, peerid, ip, port, downloaded, uploaded, leftover, downspeed, upspeed, last)" ++
+						" values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", 
+						[HashId, PeerId, SQLIP, Port, Downloaded, Uploaded, Left, 0.0, 0.0, Now]),
+					{DownDelta, UpDelta} = {lists:max([Downloaded, 0]), lists:max([Uploaded, 0])};
+				{_, _, [{DownloadedOld, UploadedOld, Last1}]} ->
+					{DownDelta, UpDelta, Last} =
+						{lists:max([Downloaded - DownloadedOld, 0]), lists:max([Uploaded - UploadedOld, 0]), Last1},
+					{Downspeed, Upspeed} =
+						case Now - Last of
+							Time when Time > 0 ->
+								{DownDelta / Time, UpDelta / Time};
+							_ -> {0,0}
+							end,
+					pgsql:equery(C, 
+						"update tracker (infohash, peerid, ip, port, downloaded, uploaded, leftover, downspeed, upspeed, last)" ++
+						" values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", 
+						[HashId, PeerId, SQLIP, Port, Downloaded, Uploaded, Left, Downspeed, Upspeed, Now])
 				end,
-			{Downspeed, Upspeed} =
-				case Now - Last of
-					Time when Time > 0 ->
-						{DownDelta / Time, UpDelta / Time};
-					_ -> 0
-				    end,
-			%% write a completely new peer with the same
-			%% hash_peer because it has no state other
-			%% than downspeed & upspeed
-			mnesia:write(#peer{hash_peer = {HashId, PeerId},
-					   ip = IP, port = Port,
-					   downloaded = Downloaded, uploaded = Uploaded,
-					   left = Left,
-					   downspeed = Downspeed, upspeed = Upspeed, last = Now}),
+			sql_conns:release_connection(C),
 			{ok, DownDelta, UpDelta}
-		end
-	end,
+	end.
 
-    case mnesia:transaction(F) of
-	{atomic, {ok, DownDelta, UpDelta}} ->
+tracker_request(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
+	IOF = insert_or_update_peer_info(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left),
+
+	case IOF of
+		{ok, DownDelta, UpDelta} ->
 	    collectd:inc_counter(if_octets, peers, [DownDelta, UpDelta]),
 	    %% Assemble result
 	    AllPeers = dirty_hash_peers(HashId),
@@ -89,21 +98,16 @@ tracker_request(HashId, PeerId, IP, Port, Uploaded, Downloaded, Left) ->
 			      ip = PeerIP,
 			      port = PeerPort} <- SomePeers]};
 
-	{atomic, not_found} ->
+	not_found ->
 	    not_found
-    end.
+  end.
 
 
-tracker_request_stopped(HashId, PeerId, IP) ->
-    F = fun() ->
-		case mnesia:read({peer, {HashId, PeerId}}) of
-		    [#peer{ip = IP1}] when IP == IP1 ->
-			mnesia:delete({peer, {HashId, PeerId}});
-		    _ ->
-			ignored
-		end
-	end,
-    {atomic, _} = mnesia:transaction(F).
+tracker_request_stopped(Infohash, PeerId, ErlangIP) ->
+		SQLIP = convert_ip(ErlangIP),
+		C = sql_conns:request_connection(),
+		pgsql:equery(C, "DELETE FROM tracker WHERE infohash = $1 and peerid = $2 and ip = $3", [Infohash, PeerId, SQLIP]),
+		sql_conns:release_connection(C).
 
 
 tracker_info(HashId) ->
@@ -132,12 +136,21 @@ tracker_scrape(HashId) ->
 		end, {0, 0, 0}, dirty_hash_peers(HashId)).
 
 
-
-dirty_hash_peers(HashId) ->
-    mnesia:dirty_select(peer, [{#peer{hash_peer = '$1',
-				      _ = '_'},
-				[{'==', {element, 1, '$1'}, HashId}],
-				['$_']}]).
+dirty_hash_peers(Infohash) ->
+	C = sql_conns:request_connection(),
+  {_, _, E} = pgsql:equery(C, "SELECT peerid, ip, port, downloaded, uploaded, leftover, upspeed, downspeed, last FROM tracker WHERE infohash = $1",[Infohash]),
+  sql_conns:release_connection(C),
+	L = [ #peer{ hash_peer={Infohash, Peerid}, 
+					 ip = IP,
+					 port = Port,
+					 downloaded = Downloaded,
+					 uploaded = Uploaded,
+					 left= Left,
+					 upspeed = Upspeed,
+					 downspeed = Downspeed,
+					 last = Last } 
+		|| {Peerid, IP, Port, Downloaded, Uploaded, Left, Upspeed, Downspeed, Last} <- E ],
+	L.
 
 
 pick_randomly(_, 0) -> [];
