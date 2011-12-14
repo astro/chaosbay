@@ -13,7 +13,7 @@
 % 	SortField = sort field as list. May contain name, length, age, comments, seeders, leechers, speed
 % 	SortDir = atom (asc, desc)
 % Output
-%   list of #browse_result records
+%   {list of #browse_result records, number of total matching torrents}
 search(Pattern, Max, Offset, SortField, SortDir) ->
     Now = util:mk_timestamp(),
 	SanatizedSortField = sanatize_sortField(SortField),
