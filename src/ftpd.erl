@@ -689,36 +689,33 @@ retr(Arg, Ctl, St) ->
     assert_valid(Ctl, St),
     assert_arg(Ctl, Arg),
     auth_op(Ctl, ?OP_RETR, St),
-    NameR = rel_name(from_utf8(Arg,St), St#cstate.wd),
-    Name = jail(Ctl, filename:join(St#cstate.rootwd, NameR), St),
-    authorize(?AUTH_READ, abs_name(NameR), Ctl, St),
-    case file:open(Name, [read | file_mode(St)]) of
-	{ok,Fd} ->
-	    {ok, #file_info{size = FileSize}} = file:read_file_info(Name),
+	TorrentName = retr_torrent_name(Arg),
+	case torrent:get_torrent_binary(TorrentName) of
+	{ok, TorrentBinary} ->
+	    TorrentBinarySize = size(TorrentBinary),
 	    case St#cstate.state of
-		{restart_pos, Pos} when Pos > FileSize ->
+		{restart_pos, PosByte} when PosByte > TorrentBinarySize ->
 		    rsend(Ctl, 554, "REST position invalid"),
-		    file:close(Fd),
+			TorrentBinaryToSend = <<>>,
 		    throw(failed);
-		{restart_pos, Pos} ->
-		    file:position(Fd, Pos);
+		{restart_pos, PosByte} ->
+			PosBit = 8*PosByte,
+		    <<_:PosBit, TorrentBinaryToSend/binary>> = TorrentBinary;
 		_ ->
-		    ok
+			TorrentBinaryToSend = TorrentBinary
 	    end,
 	    {Data,St1} = open_data(Ctl, St#cstate{state = undefined}),
-	    case send_file(Fd, 1024, 0, Data) of
-		{ok,Count} ->
-		    rsend(Ctl,226, ["closing data connection, sent",
-				    integer_to_list(Count), " bytes"]);
-		    %%rsend(Ctl,200);
-
-		{error,Err} ->
-		    rsend(Ctl,226, "closing data connection, aborted"),
-		    rsend(Ctl,550, [" error ",  erl_posix_msg:message(Err)])
-	    end,
+		case gen_tcp:send(Data, TorrentBinaryToSend) of
+		ok ->
+			rsend(Ctl,226, ["closing data connection, sent ",
+				integer_to_list(TorrentBinarySize), " bytes"]),
+			ok;
+		Error -> 
+			rsend(Ctl,226, "closing data connection, aborted"),
+			rsend(Ctl,550, [" error ",  erl_posix_msg:message(Error)])
+		end,
 	    gen_tcp:close(Data),
-	    file:close(Fd),
-	    catch (St#cstate.event_mod):event({retr, Name}),
+	    catch (St#cstate.event_mod):event({retr, Arg}),
 	    St1;
 	{error,Err} ->
 	    rsend(Ctl,550, ["error ", erl_posix_msg:message(Err)]),
@@ -941,7 +938,6 @@ lst(Arg, Ctl, St) ->
     auth_op(Ctl, ?OP_LST, St),
     {Data,St1} = open_data(Ctl, St),
 	{TorrentL, _} = torrent_browse:search(Arg, ?MAX_FTP_FILES, 0, name, asc),
-	io:format("TorrentInfo ~w~n",[TorrentL]),
 	lists:foreach( 
 		fun(E) ->
 				gen_tcp:send(Data, torrent_info(E) ++ ?CRNL)
@@ -1398,18 +1394,6 @@ close_listen(St) ->
 	    St#cstate { listen = undefined }
     end.
 
-%% Send file data over a socket
-send_file(Fd, Chunk, Count, S) ->
-    case file:read(Fd, Chunk) of
-	eof -> {ok,Count};
-	{ok,Data} ->
-	    case gen_tcp:send(S, Data) of
-		ok -> send_file(Fd, Chunk, Count+size(Data), S);
-		Error -> Error
-	    end;
-	Error -> Error
-    end.
-
 %% Receive file data over a socket
 recv_file(S, Chunk, Count, Fd) ->
     case gen_tcp:recv(S, 0) of
@@ -1539,6 +1523,15 @@ rpath([F|P], RP) -> rpath(P, [F|RP]);
 rpath([],[]) -> "";
 rpath([], RP) -> filename:join(reverse(RP)).
 
+%% Remove ".torrent" for get operations
+retr_torrent_name(RetrName) ->
+	case lists:suffix(".torrent", RetrName) of
+		true ->
+			lists:sublist(RetrName, length(RetrName) - 8);
+		_ -> 
+			RetrName
+	end.
+
 %%
 %% Generate a directory listing
 %% should normally go to the socket
@@ -1552,8 +1545,7 @@ dir_list(Ctl, Data, Dir1, DirU, St, Type) ->
 		 (E) when Type == list ->
 		      %gen_tcp:send(Data, list_info(Dir1, E, St) ++ ?CRNL),
 			  A = list_info(Dir1, E, St),
-		      gen_tcp:send(Data, A ++ ?CRNL),
-			  io:format("listinfo: ~w~n", [A])
+		      gen_tcp:send(Data, A ++ ?CRNL)
 	      end,
 	      List),
 	    rsend(Ctl, 226);
