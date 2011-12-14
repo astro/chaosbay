@@ -1526,6 +1526,8 @@ rpath([],[]) -> "";
 rpath([], RP) -> filename:join(reverse(RP)).
 
 %% Remove ".torrent" for get operations
+retr_torrent_name([S|RetrName]) when S == $/ ->
+		retr_torrent_name(RetrName);
 retr_torrent_name(RetrName) ->
 	case lists:suffix(".torrent", RetrName) of
 		true ->
