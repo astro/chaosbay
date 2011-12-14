@@ -86,6 +86,9 @@
 -include("../include/ftpd.hrl").
 -include("../include/ftpd_srv.hrl").
 -include_lib("kernel/include/file.hrl").
+-include("../include/torrent.hrl").
+
+-define(MAX_FTP_FILES, 500).
 
 -define(is_ip(X), size(X)==4, 
 		   (element(1,X) bor element(2,X) bor 
@@ -131,7 +134,7 @@
 	  iconv_cd_to_utf8,
 	  iconv_cd_from_utf8,
 	  use_utf8 = true,
-	  sys_ops = 0,                 %% allowed operations, default=none !!
+	  sys_ops = ?OPS_RESTRICTED,    %% allowed operations, default=none !!
 	  jail = true,                 %% do not allow '..' in RETR path
 	  event_mod                    %% call <event_mod>:event(Event) sometimes...
 	 }).
@@ -929,18 +932,32 @@ mkd(Arg, Ctl, St) ->
     end,
     St.
 
+%%
+%% BAD: format as access(10) + size(8)+ mdate(8)+ mtime(5)+ filename(n)
+%% GOOD: format as access(10) + type + user + group + mdate(8)+ mtime(5)+ filename(n)
+%%
 lst(Arg, Ctl, St) ->
     assert_valid(Ctl, St),
     auth_op(Ctl, ?OP_LST, St),
-    DirR = rel_name(from_utf8(Arg,St), St#cstate.wd),
-    authorize(?AUTH_READ, abs_name(DirR), Ctl, St),
-    assert_exists(Ctl, St#cstate.rootwd, DirR, directory),
-    Dir = jail(Ctl, filename:join(St#cstate.rootwd, DirR), St),
     {Data,St1} = open_data(Ctl, St),
-    dir_list(Ctl, Data, Dir, DirR, St, list),
+	{TorrentL, _} = torrent_browse:search(Arg, ?MAX_FTP_FILES, 0, name, asc),
+	io:format("TorrentInfo ~w~n",[TorrentL]),
+	lists:foreach( 
+		fun(E) ->
+				gen_tcp:send(Data, torrent_info(E) ++ ?CRNL)
+		end, TorrentL),
+	rsend(Ctl, 226),
     gen_tcp:close(Data),
     St1.
 
+torrent_info(Torrent) ->
+	TorrentDate = util:mk_timestamp() - Torrent#browse_result.age,
+	["-r--r--r--  1 "
+		++ fmt_number(Torrent#browse_result.seeders, 5, $ ) ++ " "
+		++ fmt_number(Torrent#browse_result.leechers, 5, $ ) ++ " "
+	 	++ fmt_number(Torrent#browse_result.length, 24, $ ) ++ " " 
+	++ printdate(util:timestamp_to_universal_time(TorrentDate)) ++ " " 
+	++ binary_to_list(Torrent#browse_result.name) ++ ".torrent"].
     
 nlst(Arg,Ctl,St) ->
     assert_valid(Ctl, St),
@@ -1533,7 +1550,10 @@ dir_list(Ctl, Data, Dir1, DirU, St, Type) ->
 	      fun(E) when Type == nlst ->
 		      gen_tcp:send(Data, to_utf8(E, St) ++ ?CRNL);
 		 (E) when Type == list ->
-		      gen_tcp:send(Data, list_info(Dir1, E, St) ++ ?CRNL)
+		      %gen_tcp:send(Data, list_info(Dir1, E, St) ++ ?CRNL),
+			  A = list_info(Dir1, E, St),
+		      gen_tcp:send(Data, A ++ ?CRNL),
+			  io:format("listinfo: ~w~n", [A])
 	      end,
 	      List),
 	    rsend(Ctl, 226);
