@@ -89,6 +89,8 @@
 -include("../include/torrent.hrl").
 
 -define(MAX_FTP_FILES, 500).
+-define(FTP_SORT_ORDER, name).
+-define(FTP_SORT_DIRECTION, asc).
 
 -define(is_ip(X), size(X)==4, 
 		   (element(1,X) bor element(2,X) bor 
@@ -937,7 +939,7 @@ lst(Arg, Ctl, St) ->
     assert_valid(Ctl, St),
     auth_op(Ctl, ?OP_LST, St),
     {Data,St1} = open_data(Ctl, St),
-	{TorrentL, _} = torrent_browse:search(Arg, ?MAX_FTP_FILES, 0, name, asc),
+	{TorrentL, _} = torrent_browse:search(Arg, ?MAX_FTP_FILES, 0, ?FTP_SORT_ORDER, ?FTP_SORT_DIRECTION),
 	lists:foreach( 
 		fun(E) ->
 				gen_tcp:send(Data, torrent_info(E) ++ ?CRNL)
