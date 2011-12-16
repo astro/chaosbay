@@ -149,14 +149,14 @@
 start() ->
     start([{root, "/tmp"}]).
 
-start(Opts) when list(Opts) ->
+start(Opts) when is_list(Opts) ->
     case options(Opts, #sconf{}) of
 	{ok, SConf} ->
 	    start(SConf);
 	Error ->
 	    Error
     end;
-start(SConf) when record(SConf, sconf) ->
+start(SConf) when is_record(SConf, sconf) ->
     gen_server:start(?MODULE, [SConf], []).
 
 start_link(SConf) ->
@@ -191,16 +191,16 @@ options([Opt | Opts], S) ->
 	{deny, {IP,Mask}} when ?is_ip(IP), ?is_ip(Mask) ->
 	    options(Opts, S#sconf { deny_hosts =
 				     [{IP,Mask}|S#sconf.deny_hosts]});
-	{users, Users} when list(Users) ->
+	{users, Users} when is_list(Users) ->
 	    %% Users = [{User,Passwd,[{Dir,[read|write|delete]}]} |
 	    %%          anonymous]
 	    %% NOTE: Dir must be sorted with deepest dir first!
 	    options(Opts, S#sconf{users=lists:flatmap(fun mk_user/1, Users)});
-	{max_connections,N} when integer(N), N >= 0 ->
+	{max_connections,N} when is_integer(N), N >= 0 ->
 	    options(Opts, S#sconf { max_connections = N });
 	{root, Dir} ->
 	    options(Opts, S#sconf { rootdir = Dir });
-	{idle_timeout, Seconds} when integer(Seconds), Seconds > 0 ->
+	{idle_timeout, Seconds} when is_integer(Seconds), Seconds > 0 ->
 	    options(Opts, S#sconf { idle_timeout = Seconds * 1000});
 	{use_utf8_by_default, Bool} ->
 	    options(Opts, S#sconf { use_utf8_by_default = Bool });
@@ -208,13 +208,13 @@ options([Opt | Opts], S) ->
 	    options(Opts, S#sconf { greeting_file = File });
 	{use_fd_srv, Bool} when Bool==true ; Bool==false ->
 	    options(Opts, S#sconf { use_fd_srv = Bool });
-	{event_mod, Mod} when atom(Mod) ->
+	{event_mod, Mod} when is_atom(Mod) ->
 	    options(Opts, S#sconf{event_mod = Mod});
-	{auth_mod, Mod} when atom(Mod) ->
+	{auth_mod, Mod} when is_atom(Mod) ->
 	    options(Opts, S#sconf{auth_mod = Mod});
 	{jail, Bool} when Bool==true ; Bool==false ->
 	    options(Opts, S#sconf{jail = Bool});
-	{sys_ops, SysOps} when integer(SysOps) ->
+	{sys_ops, SysOps} when is_integer(SysOps) ->
 	    options(Opts, S#sconf{sys_ops = SysOps});
 	_ ->
 	    {error, {bad_option, Opt}}
@@ -394,7 +394,7 @@ ctl_loop(Ctl, St, Buf) ->
 			failed -> ctl_loop(Ctl,St,Buf1);
 			quit -> true;
 			init -> ctl_loop_init(Ctl, St#cstate.def_data_port);
-			St1 when record(St1, cstate) ->
+			St1 when is_record(St1, cstate) ->
 			    ctl_loop(Ctl,St1,Buf1);
 			_Err -> %% Crash etc - e.g. bad input from client
 			    ?dbg("ftpd crash: ~p", [_Err]),
@@ -540,7 +540,7 @@ pass(Password, Ctl, St) ->
 	U when U#user.passwd == Password ->
 	    rsend(Ctl, 230, ["User ", U#user.name, " logged in, proceed"]),
 	    St#cstate{ust = valid};
-	U when record(U, user) ->
+	U when is_record(U, user) ->
 	    rsend(Ctl, 530, "Login incorrect"),
 	    St;
 	UserName ->
@@ -826,7 +826,7 @@ rest(Arg, Ctl, St) ->
 	    St;
 	image ->
 	    case list_to_integer(Arg) of
-		Pos when integer(Pos), Pos >= 0 ->
+		Pos when is_integer(Pos), Pos >= 0 ->
 		    rsend(Ctl, 350, ["Restarting at ", integer_to_list(Pos),
 				     " send STOR or RETR to start transfer"]),
 		    St#cstate{state = {restart_pos, Pos}}
@@ -1110,7 +1110,7 @@ rsend(Ctl, Code) ->
     send(Ctl, Code, [rstr(Code)++ ?CRNL]).
 
 %% Send a single line reply with CRNL
-rsend(Ctl, Code, Mesg) when integer(Code) ->
+rsend(Ctl, Code, Mesg) when is_integer(Code) ->
     send(Ctl, Code, [integer_to_list(Code)," ",Mesg, ?CRNL]).
 
 %% send a multi line reply
