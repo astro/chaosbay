@@ -88,10 +88,6 @@
 -include_lib("kernel/include/file.hrl").
 -include("../include/torrent.hrl").
 
--define(MAX_FTP_FILES, 500).
--define(FTP_SORT_ORDER, name).
--define(FTP_SORT_DIRECTION, asc).
-
 -define(is_ip(X), size(X)==4, 
 		   (element(1,X) bor element(2,X) bor 
 		   element(3,X) bor element(4,X)) band (bnot 255) == 0).
