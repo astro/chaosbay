@@ -2,7 +2,6 @@
 
 -export([init/0,
 	 add/2, add_http/1, add_from_dir/1,
-	 reset_tracker_urls/0,
 	 recent/1,
 	 get_torrent_meta_by_name/1,
 	 get_torrent_meta_by_id/1, torrent_name_by_id_t/1,
@@ -12,14 +11,7 @@
 
 
 init() ->
-    mnesia:create_schema([node()]),
-    mnesia:start(),
-    util:safe_mnesia_create_table(torrent_meta, [{disc_copies, [node()]},
-				  {attributes, record_info(fields, torrent_meta)}]),
-    mnesia:add_table_index(torrent_meta, id),
-    util:safe_mnesia_create_table(torrent_data, [{disc_only_copies, [node()]},
-				  {attributes, record_info(fields, torrent_data)}]).
-
+	ok.
 
 add_http(URL) ->
     [Filename | _] = lists:reverse(string:tokens(URL, "/")),
@@ -59,98 +51,85 @@ add(Filename, Upload) ->
 	    Length = torrent_info:get_length(ParsedFile),
 	    ParsedFile2 = torrent_info:set_tracker(ParsedFile),
 	    Binary = benc:to_binary(ParsedFile2),
-	    TorrentMeta = #torrent_meta{name = NewFilename,
-			       id = Id,
-			       length = Length,
-			       date = util:mk_timestamp()},
-	    TorrentData = #torrent_data{name = NewFilename,
-					binary = Binary},
-	    F = fun() ->
-			mnesia:write_lock_table(torrent_meta),
-			mnesia:write_lock_table(torrent_data),
-			%% Check if filename is already present
-			case mnesia:read({torrent_meta, NewFilename}) of
-			    [] ->
-				case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
-				    [] ->
-					mnesia:write(TorrentMeta),
-					mnesia:write(TorrentData),
-					{ok, NewFilename};
-				    _ ->
-					exists
-				end;
-			    _ ->
-				exists
-			end
+		Timestamp = util:mk_timestamp(),
+		C = sql_conns:request_connection(),
+		{ok, _Columns, Rows} = pgsql:equery(C, "select infohash from torrents where infohash = $1 or name = $2", 
+												[Id, NewFilename]),
+		case Rows of
+			[] ->
+				pgsql:equery(C, "insert into torrents (infohash, name, length, data, timestamp) values ($1, $2, $3, $4, $5)", 
+						[Id, NewFilename, Length, Binary, Timestamp]),
+				Result = {ok, NewFilename};
+			_ ->
+				Result = exists
 		end,
-	    {atomic, Result} = mnesia:transaction(F),
-	    Result
+		sql_conns:release_connection(C),
+		Result
     end.
 
-
-reset_tracker_urls() ->
-    F = fun() ->
-		mnesia:write_lock_table(torrent_data),
-		mnesia:foldl(fun(#torrent_data{binary = Binary} = TorrentData, _) ->
-				     Parsed = benc:parse(Binary),
-				     Parsed2 = torrent_info:set_tracker(Parsed),
-				     Binary2 = benc:to_binary(Parsed2),
-				     mnesia:write(TorrentData#torrent_data{binary = Binary2})
-			     end, 0, torrent_data)
-	end,
-    {atomic, _} = mnesia:transaction(F).
-
-
 recent(Max) ->
-    F = fun() ->
-		S =
-		    mnesia:foldl(fun(TorrentMeta, Result) ->
-					 sorted:insert(Result, TorrentMeta)
-				 end,
-				 sorted:new(#torrent_meta.date, desc, Max),
-				 torrent_meta),
-		sorted:to_list(S)
-	end,
-    {atomic, Result} = mnesia:transaction(F),
-    Result.
-
+	C = sql_conns:request_connection(),
+	{ok, _Columns, Rows} = 
+		pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents order by timestamp asc limit $1", [Max]),
+	sql_conns:release_connection(C),
+	Result = lists:flatmap(fun(X) ->
+								{{Name, InfoHash, Length, Timestamp}} = X,
+								[#torrent_meta{ name = Name, id = InfoHash, length = Length, date = Timestamp}]
+							end, Rows),
+	Result.
 
 get_torrent_meta_by_name(Name) when is_list(Name) ->
     get_torrent_meta_by_name(list_to_binary(Name));
 
 get_torrent_meta_by_name(Name) ->
-    F = fun() ->
-		case mnesia:read({torrent_meta, Name}) of
-		    [TorrentMeta] -> TorrentMeta;
-		    [] -> not_found
-		end
+	C = sql_conns:request_connection(),
+	case pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents where name = $1", [Name]) of
+		{ok, _, [{E}]} -> 
+			{Name, Id, Length, Date} = E,
+			Result = #torrent_meta{name = Name, id = Id, length = Length, date = Date};
+		{error, _} -> 
+			Result = not_found
 	end,
-    {atomic, Result} = mnesia:transaction(F),
+	sql_conns:release_connection(C),
     Result.
 
 get_torrent_meta_by_id(Id) ->
-    {atomic, Result} =
-	mnesia:transaction(
-	  fun() ->
-		  case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
-		      [] -> not_found;
-		      [TorrentMeta] -> {ok, TorrentMeta}
-		  end
-	  end),
+	C = sql_conns:request_connection(),
+	case pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents where infohash = $1", [Id]) of
+		{ok, _, [{E}]} -> 
+			{Name, Id, Length, Date} = E,
+			Result = {ok, #torrent_meta{name = Name, id = Id, length = Length, date = Date}};
+		{error, _} -> 
+			Result = not_found
+	end,
+	sql_conns:release_connection(C),
     Result.
 
 torrent_name_by_id_t(Id) ->
-    case mnesia:index_read(torrent_meta, Id, #torrent_meta.id) of
-	[] -> not_found;
-	[#torrent_meta{name = Name}] -> {ok, Name}
-    end.
+	C = sql_conns:request_connection(),
+	case pgsql:equery(C, "select (name) from torrents where infohash = $1", [Id]) of
+		%{ok, _, [{E}]} -> 
+		{ok, _, [E]} -> 
+			{Name} = E,
+			Result = {ok,Name};
+		{ok, _, []} -> 
+			Result = not_found;
+		{error, _} -> 
+			Result = not_found
+	end,
+	sql_conns:release_connection(C),
+	Result.
+
 
 get_torrent_binary(Name) when is_list(Name) ->
     get_torrent_binary(list_to_binary(Name));
 get_torrent_binary(Name) ->
-    case mnesia:dirty_read(torrent_data, Name) of
-	[#torrent_data{binary = Binary}] ->
-	    {ok, Binary};
-	_ ->
-	    not_found
-    end.
+	C = sql_conns:request_connection(),
+	case pgsql:equery(C, "select (data) from torrents where name = $1", [Name]) of
+		{ok, _, [{E}]} -> 
+			Result = {ok, E};
+		{error, _} -> 
+			Result = not_found
+	end,
+	sql_conns:release_connection(C),
+	Result.

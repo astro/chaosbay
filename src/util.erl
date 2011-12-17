@@ -3,8 +3,8 @@
 -export([mk_timestamp/0, mk_timestamp_us/0,
 	 human_length/1, human_bandwidth/1, human_duration/1,
 	 timestamp_to_iso8601/1,
+	 timestamp_to_universal_time/1,
 	 pmap/2, timeout/2,
-	 safe_mnesia_create_table/2,
 	 split_string/3, list_index/2]).
 
 mk_timestamp() ->
@@ -63,6 +63,9 @@ timestamp_to_iso8601(TS) ->
       io_lib:format("~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B+00:00",
 		    [Y, M, D, Hour, Min, Sec])).
 
+timestamp_to_universal_time(TS) ->
+    Now = {TS div 1000000, TS rem 1000000, 0},
+    calendar:now_to_universal_time(Now).
 
 %% http://yarivsblog.com/articles/2008/02/08/the-erlang-challenge/
 pmap(Fun, List) ->
@@ -91,18 +94,6 @@ timeout(Fun, Timeout) ->
     after Timeout ->
 	    exit(Pid, timeout),
 	    exit(timeout)
-    end.
-
-
-safe_mnesia_create_table(Name, TabDef) ->
-    case mnesia:create_table(Name, TabDef) of
-	{atomic, ok} ->
-	    ok;
-	{aborted, {already_exists, Name}} ->
-	    error_logger:info_msg("Picked up existing database ~p", [Name]),
-	    %% TODO: check attributes
-	    ok;
-	E -> exit(E)
     end.
 
 
