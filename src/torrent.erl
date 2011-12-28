@@ -84,10 +84,10 @@ get_torrent_meta_by_name(Name) when is_list(Name) ->
 get_torrent_meta_by_name(Name) ->
 	C = sql_conns:request_connection(),
 	case pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents where name = $1", [Name]) of
-		{ok, _, [{E}]} -> 
+		{ok, _, [{E} | _]} -> 
 			{Name, Id, Length, Date} = E,
 			Result = #torrent_meta{name = Name, id = Id, length = Length, date = Date};
-		{error, _} -> 
+		_ -> 
 			Result = not_found
 	end,
 	sql_conns:release_connection(C),
@@ -96,10 +96,10 @@ get_torrent_meta_by_name(Name) ->
 get_torrent_meta_by_id(Id) ->
 	C = sql_conns:request_connection(),
 	case pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents where infohash = $1", [Id]) of
-		{ok, _, [{E}]} -> 
+		{ok, _, [{E} | _]} -> 
 			{Name, Id, Length, Date} = E,
 			Result = {ok, #torrent_meta{name = Name, id = Id, length = Length, date = Date}};
-		{error, _} -> 
+		_ -> 
 			Result = not_found
 	end,
 	sql_conns:release_connection(C),
@@ -108,13 +108,9 @@ get_torrent_meta_by_id(Id) ->
 torrent_name_by_id_t(Id) ->
 	C = sql_conns:request_connection(),
 	case pgsql:equery(C, "select (name) from torrents where infohash = $1", [Id]) of
-		%{ok, _, [{E}]} -> 
-		{ok, _, [E]} -> 
-			{Name} = E,
+		{ok, _, [{Name} | _]} -> 
 			Result = {ok,Name};
-		{ok, _, []} -> 
-			Result = not_found;
-		{error, _} -> 
+		_ -> 
 			Result = not_found
 	end,
 	sql_conns:release_connection(C),
@@ -126,9 +122,9 @@ get_torrent_binary(Name) when is_list(Name) ->
 get_torrent_binary(Name) ->
 	C = sql_conns:request_connection(),
 	case pgsql:equery(C, "select (data) from torrents where name = $1", [Name]) of
-		{ok, _, [{E}]} -> 
+		{ok, _, [{E} | _]} -> 
 			Result = {ok, E};
-		{error, _} -> 
+		_ -> 
 			Result = not_found
 	end,
 	sql_conns:release_connection(C),
