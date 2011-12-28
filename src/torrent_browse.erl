@@ -5,6 +5,13 @@
 
 -include("../include/torrent.hrl").
 
+% The UI "age" thing has a reverse order compared to the DB
+% "timestamp" field.
+search(Pattern, Max, Offset, "age", asc) ->
+    search(Pattern, Max, Offset, "timestamp", desc);
+search(Pattern, Max, Offset, "age", desc) ->
+    search(Pattern, Max, Offset, "timestamp", asc);
+
 % TODO: description as erlang docu
 % Input
 % 	Pattern = Search pattern name, as list
@@ -59,8 +66,6 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 	{Result, TotalMatchingTorrents}.
 
 
-sanatize_sortField(SortField) when SortField =:= "age" ->
-	"timestamp";
 sanatize_sortField(SortField) when SortField =:= "comments" ->
 	"count_comments(name)";
 sanatize_sortField(SortField) when SortField =:= "leechers" ->
