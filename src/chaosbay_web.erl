@@ -378,12 +378,23 @@ request(Req, 'GET', "announce") ->
 		    not_found ->
 			[{<<"failure reason">>, <<"No torrent registered for info_hash">>}];
 		    {peers, Peers} ->
-			case lists:keysearch("compact", 1, QS) of
-			    {value, _} ->
-				build_compact_tracker_response(Peers);
-			    _ ->
-				build_tracker_response(Peers)
-			end
+			Body = case lists:keysearch("compact", 1, QS) of
+				   {value, _} ->
+				       build_compact_tracker_response(Peers);
+				   _ ->
+				       build_tracker_response(Peers)
+			       end,
+			{Complete, Incomplete, Downloaded3} = tracker:tracker_scrape(InfoHash),
+			DownloadCount = case torrent:get_torrent_meta_by_id(InfoHash) of
+					    {ok, #torrent_meta{length = Length}} ->
+						trunc(Downloaded3 / Length);
+					    _ ->
+						0
+					end,
+			[{<<"complete">>, Complete},
+			 {<<"incomplete">>, Incomplete},
+			 {<<"downloaded">>, DownloadCount}
+			 | Body]
 		end
 	end,
     %%io:format("announce reply from ~p to ~p: ~p~n", [InfoHash, IP, Reply]),
