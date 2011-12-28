@@ -40,3 +40,5 @@ CREATE FUNCTION count_seeders(BYTEA) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM t
 CREATE FUNCTION count_leechers(BYTEA) RETURNS BIGINT AS $$ SELECT COUNT(*) FROM tracker WHERE infohash = $1 and leftover > 0;$$ LANGUAGE SQL;
 
 CREATE FUNCTION count_downspeed(BYTEA) RETURNS REAL AS $$ SELECT COALESCE(SUM(upspeed),0) FROM tracker WHERE infohash = $1;$$ LANGUAGE SQL;
+
+CREATE TABLE stats (timestamp BIGINT, type TEXT, value BIGINT, PRIMARY KEY (timestamp, type));

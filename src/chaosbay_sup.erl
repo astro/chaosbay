@@ -57,6 +57,9 @@ init([]) ->
     TrackerCleaner = {tracker_cleaner,
 		      {tracker, cleaner_start_link, []},
 		      permanent, 5000, worker, [tracker]},
+    Stats = {stats,
+	     {stats, start_link, []},
+	     permanent, 5000, worker, [stats]},
 
-    Processes = [Web, SqlConnections, TrackerCleaner],
+    Processes = [Web, SqlConnections, TrackerCleaner, Stats],
     {ok, {{one_for_one, 10, 10}, Processes}}.

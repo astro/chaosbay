@@ -72,7 +72,7 @@ tracker_request(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
 
 	case IOF of
 		{ok, DownDelta, UpDelta} ->
-	    %collectd:inc_counter(if_octets, peers, [DownDelta, UpDelta]),
+	    stats:inc_bytes(DownDelta, UpDelta),
 	    %% Assemble result
 	    AllPeers = dirty_hash_peers(HashId),
 		%%io:format("AllPeers: ~p~n", [AllPeers]),
@@ -186,7 +186,7 @@ cleaner_loop() ->
 	sql_conns:release_connection(C),
     error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
 
-    %collect_peer_stats(),
+    collect_peer_stats(),
 
     %% Sleep
     receive
@@ -198,15 +198,12 @@ cleaner_loop() ->
 
 
 collect_peer_stats() ->
-	C = sql_conns:request_connection(),
-	{_,_, [{Seeders4}]} = pgsql:equery(C,"select count(*) from tracker where leftover = 0 and length(ip) = 4"),
-	{_,_, [{Leechers4}]} = pgsql:equery(C,"select count(*) from tracker where leftover > 0 and length(ip) = 4"),
-	{_,_, [{Seeders6}]} = pgsql:equery(C,"select count(*) from tracker where leftover = 0 and length(ip) = 16"),
-	{_,_, [{Leechers6}]} = pgsql:equery(C,"select count(*) from tracker where leftover > 0 and length(ip) = 16"),
-	sql_conns:release_connection(C),
+    C = sql_conns:request_connection(),
+    {_,_, [{Seeders4}]} = pgsql:equery(C,"select count(*) from tracker where leftover = 0 and length(ip) = 4"),
+    {_,_, [{Leechers4}]} = pgsql:equery(C,"select count(*) from tracker where leftover > 0 and length(ip) = 4"),
+    {_,_, [{Seeders6}]} = pgsql:equery(C,"select count(*) from tracker where leftover = 0 and length(ip) = 16"),
+    {_,_, [{Leechers6}]} = pgsql:equery(C,"select count(*) from tracker where leftover > 0 and length(ip) = 16"),
+    sql_conns:release_connection(C),
     %io:format("peer_stats: ~p~n", [{Seeders4, Leechers4, Seeders6, Leechers6}]),
-    collectd:set_gauge(peers, inet_seeders, [Seeders4]),
-    collectd:set_gauge(peers, inet_leechers, [Leechers4]),
-    collectd:set_gauge(peers, inet6_seeders, [Seeders6]),
-    collectd:set_gauge(peers, inet6_leechers, [Leechers6]).
+    stats:update_peers(Seeders4, Leechers4, Seeders6, Leechers6).
 
