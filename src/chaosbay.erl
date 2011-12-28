@@ -20,8 +20,8 @@ ensure_started(App) ->
 start() ->
     chaosbay_deps:ensure(),
     ensure_started(crypto),
-    ensure_started(collectd),
-    setup_collectd(),
+    %ensure_started(collectd),
+    %setup_collectd(),
     application:start(chaosbay).
 
 %% @spec stop() -> ok

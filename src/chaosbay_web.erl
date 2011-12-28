@@ -57,7 +57,7 @@ loop(Req) ->
 	       end,
     T2 = util:mk_timestamp_us(),
     io:format("~s [~Bus] ~s ~s~n", [Req:get(peer), T2 - T1, Method, Path]),
-    collectd:set_gauge(delay, http_request, [(T2 - T1) / 1000000]),
+    %collectd:set_gauge(delay, http_request, [(T2 - T1) / 1000000]),
     Response.
 
 
@@ -77,7 +77,8 @@ count_request_(What, {_, _, _, _}) ->
     collectd:inc_counter(http_requests, "inet_" ++ atom_to_list(What), [1]);
 count_request_(What, {_, _, _, _, _, _, _, _}) ->
     collectd:inc_counter(http_requests, "inet6_" ++ atom_to_list(What), [1]).
--define(COUNT_REQUEST(What), count_request_(What, ?GET_REMOTE_ADDR)).
+%-define(COUNT_REQUEST(What), count_request_(What, ?GET_REMOTE_ADDR)).
+-define(COUNT_REQUEST(What), n).
 
 -define(COL_LINK(Field), (case atom_to_list(Field) of
 			      SortName ->

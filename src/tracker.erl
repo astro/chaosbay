@@ -72,7 +72,7 @@ tracker_request(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
 
 	case IOF of
 		{ok, DownDelta, UpDelta} ->
-	    collectd:inc_counter(if_octets, peers, [DownDelta, UpDelta]),
+	    %collectd:inc_counter(if_octets, peers, [DownDelta, UpDelta]),
 	    %% Assemble result
 	    AllPeers = dirty_hash_peers(HashId),
 		%%io:format("AllPeers: ~p~n", [AllPeers]),
@@ -186,7 +186,7 @@ cleaner_loop() ->
 	sql_conns:release_connection(C),
     error_logger:info_msg("Cleaned ~B obsolete peers from tracker~n", [N]),
 
-    collect_peer_stats(),
+    %collect_peer_stats(),
 
     %% Sleep
     receive
