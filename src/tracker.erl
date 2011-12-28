@@ -15,21 +15,29 @@
 init() ->
 	ok.
 
-convert_ip({A,B,C,D}) ->
+convert_ip_sql({A,B,C,D}) ->
 	<<A:8, B:8, C:8, D:8>>;
-convert_ip({A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P}) ->
+convert_ip_sql({A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P}) ->
 	<<A:8, B:8, C:8, D:8, E:8, F:8, G:8, H:8, I:8, J:8, K:8, L:8, M:8, N:8, O:8, P:8>>;
-convert_ip(E) when is_binary(E), size(E) == 4 ->
+convert_ip_sql({A,B,C,D,E,F,G,H}) ->
+	<<A:16, B:16, C:16, D:16, E:16, F:16, G:16, H:16>>;
+convert_ip_sql(<<Bin/binary>>) ->
+	Bin.
+convert_ip_erl(E) when is_tuple(E) ->
+	E;
+convert_ip_erl(E) when is_binary(E), size(E) == 4 ->
 	<<A:8, B:8, C:8, D:8>> = E,
 	{A,B,C,D};
-convert_ip(E) when is_binary(E), size(E) == 16 ->
-	<<A:8, B:8, C:8, D:8, E:8, F:8, G:8, H:8, I:8, J:8, K:8, L:8, M:8, N:8, O:8, P:8>> = E,
-	{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P}.
+convert_ip_erl(E1) when is_binary(E1), size(E1) == 16 ->
+	<<A:16, B:16, C:16, D:16, E:16, F:16, G:16, H:16>> = E1,
+	{A,B,C,D,E,F,G,H}.
+	%<<A:8, B:8, C:8, D:8, E:8, F:8, G:8, H:8, I:8, J:8, K:8, L:8, M:8, N:8, O:8, P:8>> = E1,
+	%{A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P}.
 
 insert_or_update_peer_info(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
     Now = util:mk_timestamp(),
 	C = sql_conns:request_connection(),
-	SQLIP = convert_ip(ErlangIP),
+	SQLIP = convert_ip_sql(ErlangIP),
 	case torrent:torrent_name_by_id_t(HashId) of
 		not_found -> not_found;
 		{ok, _} ->
@@ -103,7 +111,7 @@ tracker_request(HashId, PeerId, ErlangIP, Port, Uploaded, Downloaded, Left) ->
 
 
 tracker_request_stopped(Infohash, PeerId, ErlangIP) ->
-		SQLIP = convert_ip(ErlangIP),
+		SQLIP = convert_ip_sql(ErlangIP),
 		C = sql_conns:request_connection(),
 		pgsql:equery(C, "DELETE FROM tracker WHERE infohash = $1 and peerid = $2 and ip = $3", [Infohash, PeerId, SQLIP]),
 		sql_conns:release_connection(C).
@@ -141,7 +149,7 @@ dirty_hash_peers(Infohash) ->
   sql_conns:release_connection(C),
 	
 	L = [ #peer{ hash_peer={Infohash, Peerid}, 
-					 ip = convert_ip(SQLIP),
+					 ip = convert_ip_erl(SQLIP),
 					 port = Port,
 					 downloaded = Downloaded,
 					 uploaded = Uploaded,
