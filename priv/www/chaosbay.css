@@ -26,6 +26,12 @@ div#head ul li a#add:before {
     display: inline;
     vertical-align: bottom;
 }
+div#head ul li a#atom:before {
+    content: url(/static/atom.png);
+    display: inline;
+    vertical-align: middle;
+    padding-right: 4px;
+}
 div#head ul li a {
     color: white;
 }
@@ -33,8 +39,8 @@ div#head ul li form input {
     border: 1px solid black;
     background-image: url(/static/system-search.png);
     background-repeat: no-repeat;
-    background-position: left center;
-    padding-left: 22px;
+    background-position: 2px center;
+    padding-left: 20px;
 }
 div#head h1 {
     font-size: x-large;
