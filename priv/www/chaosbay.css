@@ -115,6 +115,9 @@ div#content table tr td a.download:before {
 }
 div#content table tr td a.download {
     font-size: 0;
+    height: 0;
+    width: 0;
+    color: rgba(0,0,0,0);
 }
 div#content table tr.dead td {
     background: #ddd;
