@@ -101,8 +101,8 @@ handle_cast(timer, State) ->
 		 end,
     case State#state.bytes of
 	{Down, Up} ->
-	    WriteStats("down", Down),
-	    WriteStats("up", Up);
+	    WriteStats("down", Down * 1000 div ?INTERVAL),
+	    WriteStats("up", Up * 1000 div ?INTERVAL);
 	_ ->
 	    false
     end,
