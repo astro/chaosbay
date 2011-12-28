@@ -70,7 +70,7 @@ add(Filename, Upload) ->
 recent(Max) ->
 	C = sql_conns:request_connection(),
 	{ok, _Columns, Rows} = 
-		pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents order by timestamp asc limit $1", [Max]),
+		pgsql:equery(C, "select (name, infohash, length, timestamp) from torrents order by timestamp desc limit $1", [Max]),
 	sql_conns:release_connection(C),
 	Result = lists:flatmap(fun(X) ->
 								{{Name, InfoHash, Length, Timestamp}} = X,
