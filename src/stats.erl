@@ -37,19 +37,15 @@ update_peers(Seeders4, Leechers4, Seeders6, Leechers6) ->
     gen_server:cast(?SERVER, {update_peers, Seeders4, Leechers4, Seeders6, Leechers6}).
 
 get_bytes_stats() ->
-    C = sql_conns:request_connection(),
-    {ok, _, Downs} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='down' ORDER BY timestamp ASC", []),
-    {ok, _, Ups} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='up' ORDER BY timestamp ASC", []),
-    sql_conns:release_connection(C),
+    Downs = query_stats("down"),
+    Ups = query_stats("up"),
     {Downs, Ups}.
 
 get_peers_stats() ->
-    C = sql_conns:request_connection(),
-    {ok, _, Leechers4} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='leechers4' ORDER BY timestamp ASC", []),
-    {ok, _, Seeders4} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='seeders4' ORDER BY timestamp ASC", []),
-    {ok, _, Leechers6} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='leechers6' ORDER BY timestamp ASC", []),
-    {ok, _, Seeders6} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='seeders6' ORDER BY timestamp ASC", []),
-    sql_conns:release_connection(C),
+    Leechers4 = query_stats("leechers4"),
+    Seeders4 = query_stats("seeders4"),
+    Leechers6 = query_stats("leechers6"),
+    Seeders6 = query_stats("seeders6"),
     {Leechers4, Seeders4, Leechers6, Seeders6}.
 
 %%--------------------------------------------------------------------
@@ -206,3 +202,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 arm_timer(Delay) ->
     timer:apply_after(Delay, gen_server, cast, [self(), timer]).
+
+query_stats(Type) ->
+    C = sql_conns:request_connection(),
+    {ok, _, TimestampsValues} = pgsql:equery(C, "select trunc(timestamp / 1800)  * 1800 as ts, min(timestamp), avg(value) from stats where type=$1 group by ts order by ts;", [Type]),
+    sql_conns:release_connection(C),
+    [{Timestamp,Value}
+     || {_TS, Timestamp, Value} <- TimestampsValues].
+
