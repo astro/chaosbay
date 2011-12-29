@@ -205,8 +205,8 @@ arm_timer(Delay) ->
 
 query_stats(Type) ->
     C = sql_conns:request_connection(),
-    {ok, _, TimestampsValues} = pgsql:equery(C, "select trunc(timestamp / 1800)  * 1800 as ts, min(timestamp), avg(value) from stats where type=$1 group by ts order by ts;", [Type]),
+    {ok, _, TimestampsValues} = pgsql:equery(C, "select trunc(timestamp / $1) * $1 as ts, avg(timestamp), avg(value) from stats where type=$2 group by ts order by ts;", [1800, Type]),
     sql_conns:release_connection(C),
-    [{Timestamp,Value}
+    [{list_to_float(binary_to_list(Timestamp)),list_to_float(binary_to_list(Value))}
      || {_TS, Timestamp, Value} <- TimestampsValues].
 
