@@ -20,11 +20,12 @@ div#head ul {
     float: right;
     text-align: right;
     list-style-type: none;
+    line-height: 1.2em;
 }
 div#head ul li a#add:before {
     content: url(/static/add.png);
     display: inline;
-    vertical-align: bottom;
+    vertical-align: middle;
 }
 div#head ul li a#atom:before {
     content: url(/static/atom.png);
@@ -40,10 +41,12 @@ div#head ul li form input {
     background-image: url(/static/system-search.png);
     background-repeat: no-repeat;
     background-position: 2px center;
+    padding: 2px;
+    margin: 0;
     padding-left: 20px;
 }
 div#head h1 {
-    font-size: x-large;
+    font-size: 250%;
     font-weight: bold;
     margin-right: 5em;
 }
