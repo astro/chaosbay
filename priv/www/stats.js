@@ -17,6 +17,11 @@ function toMB(values) {
     return [values[0], values[1] / 1024 / 1024];
 }
 
+var tzOffset = - new Date().getTimezoneOffset() * 60 * 1000;
+function applyTZOffset(values) {
+    return [values[0] + tzOffset, values[1]];
+}
+
 function loadBytes(cb) {
     $.ajax({ url: "/stats/bytes.json",
 	 dataType: 'json',
@@ -24,14 +29,14 @@ function loadBytes(cb) {
 	     $("#bytes").before("<h2>Swarm Throughput</h2>");
 	     $.plot($("#bytes"), [{
 		 label: "Download",
-	         data: data.down.map(toMB),
+	         data: data.down.map(toMB).map(applyTZOffset),
 		 color: 'green',
 		 lines: { fill: true },
 		 hoverable: true,
 		 clickable: true
 	     }, {
 		 label: "Upload",
-		 data: data.up.map(toMB),
+		 data: data.up.map(toMB).map(applyTZOffset),
 		 color: 'red',
 		 lines: { fill: true },
 		 hoverable: true,
@@ -58,19 +63,19 @@ function loadPeers(cb) {
 	     $("#peers").before("<h2>Tracked Peers</h2>");
 	     $.plot($("#peers"), [{
 		 label: "Leechers (IPv4)",
-	         data: data.leechers4,
+	         data: data.leechers4.map(applyTZOffset),
 		 color: '#cf0000'
 	     }, {
 		 label: "Seeders (IPv4)",
-	         data: data.seeders4,
+	         data: data.seeders4.map(applyTZOffset),
 		 color: '#007f00'
 	     }, {
 		 label: "Leechers (IPv6)",
-	         data: data.leechers6,
+	         data: data.leechers6.map(applyTZOffset),
 		 color: '#ff6f3f'
 	     }, {
 		 label: "Seeders (IPv6)",
-	         data: data.seeders6,
+	         data: data.seeders6.map(applyTZOffset),
 		 color: '#3fff3f'
 	     }], {
                 yaxis: { min: 0 },
