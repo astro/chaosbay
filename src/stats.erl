@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, inc_bytes/2, update_peers/4, get_bytes_stats/0, get_peers_stats/0]).
+-export([start_link/0, inc_bytes/2, inc_ftp_bytes/1, update_peers/4, get_bytes_stats/0, get_peers_stats/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -29,6 +29,9 @@
 
 inc_bytes(DownDelta, UpDelta) ->
     gen_server:cast(?SERVER, {inc_bytes, DownDelta, UpDelta}).
+
+inc_ftp_bytes(Bytes) ->
+    gen_server:cast(?SERVER, {inc_ftp_bytes, Bytes}).
 
 update_peers(Seeders4, Leechers4, Seeders6, Leechers6) ->
     gen_server:cast(?SERVER, {update_peers, Seeders4, Leechers4, Seeders6, Leechers6}).
@@ -147,6 +150,14 @@ handle_cast({inc_bytes, DownDelta, UpDelta}, State) ->
 		     undefined -> {0, 0}
 		 end,
     {noreply, State#state{bytes = {Down + DownDelta, Up + UpDelta}}};
+
+handle_cast({inc_ftp_bytes, Bytes}, State) ->
+    C = sql_conns:request_connection(),
+       pgsql:equery(C, "INSERT INTO stats (timestamp, type, value) VALUES ($1, $2, $3)",
+                                     [util:mk_timestamp(), "ftp_bytes", Bytes]),
+    sql_conns:release_connection(C),
+    {noreply, State};
+
 
 handle_cast({update_peers, Seeders4, Leechers4, Seeders6, Leechers6}, State) ->
     {noreply, State#state{peers = {Seeders4, Leechers4, Seeders6, Leechers6}}}.

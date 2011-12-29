@@ -705,6 +705,7 @@ retr(Arg, Ctl, St) ->
 	    {Data,St1} = open_data(Ctl, St#cstate{state = undefined}),
 		case gen_tcp:send(Data, TorrentBinaryToSend) of
 		ok ->
+			stats:inc_ftp_bytes(TorrentBinarySize),
 			rsend(Ctl,226, ["closing data connection, sent ",
 				integer_to_list(TorrentBinarySize), " bytes"]),
 			ok;
