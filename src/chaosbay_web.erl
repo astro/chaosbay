@@ -571,7 +571,7 @@ html_skeleton(Body) ->
 ">>, Body, <<"
     </div>
     <p id='foot'>
-— Powered by mochiweb &amp; ... —
+— Powered by Mochiweb &amp; PostgreSQL —
 <br/>
 Running on ">>,
 	     case nodes(visible) of
