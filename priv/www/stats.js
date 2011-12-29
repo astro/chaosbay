@@ -50,7 +50,7 @@ function loadBytes(cb) {
 		       },
 		width: 800,
 		height: 300,
-		legend: { position: 'ne' }
+		legend: { position: 'nw' }
             });
 	    cb();
 	 },
@@ -85,7 +85,7 @@ function loadPeers(cb) {
 		       },
 		width: 800,
 		height: 300,
-		legend: { position: 'ne' }
+		legend: { position: 'nw' }
             });
 	     if (cb)
 		 cb();
