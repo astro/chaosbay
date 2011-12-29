@@ -21,6 +21,8 @@
 -define(MIME_XHTML, "application/xhtml+xml").
 -define(MIME_ATOM, "application/atom+xml").
 -define(MIME_BITTORRENT, "application/x-bittorrent").
+-define(MIME_JSON, "application/json").
+-define(MIME_JAVASCRIPT, "text/javascript").
 
 %% External API
 
@@ -428,10 +430,41 @@ request(Req, 'GET', "scrape") ->
 		      [{<<"min_request_interval">>, ?TRACKER_REQUEST_INTERVAL}]}
 		    ]
 	   end,
-    %%io:format("scrape reply for ~p: ~p~n", [InfoHash, Reply]),
+    %io:format("scrape reply for ~p: ~p~n", [InfoHash, Reply]),
     Bencoded = benc:to_binary(Reply),
     Req:ok({?MIME_BITTORRENT,
 	    Bencoded});
+
+request(Req, 'GET', "stats.html") ->
+    HTML = [{script, [{"type", ?MIME_JAVASCRIPT},
+		      {"src", "/static/jquery.flot.min.js"}], [""]},
+	    {script, [{"type", ?MIME_JAVASCRIPT},
+		      {"src", "/static/stats.js"}], [""]},
+	    {noscript, [], ["JavaScript required"]},
+	    {"div", [{"id", "stats"}],
+	     [{'div', [{"id", "bytes"}], [""]},
+	      {'div', [{"id", "peers"}], [""]}
+	     ]}
+	   ],
+    html_ok(Req, lists:map(fun html:to_iolist/1, HTML));
+
+request(Req, 'GET', "stats/peers.json") ->
+    {Leechers4, Seeders4, Leechers6, Seeders6} = stats:get_peers_stats(),
+    Json = {struct,
+	    [{leechers4, stats_to_json(Leechers4)},
+	     {seeders4, stats_to_json(Seeders4)},
+	     {leechers6, stats_to_json(Leechers6)},
+	     {seeders6, stats_to_json(Seeders6)}
+	    ]},
+    Req:ok({?MIME_JSON, mochijson:encode(Json)});
+
+request(Req, 'GET', "stats/bytes.json") ->
+    {Down, Up} = stats:get_bytes_stats(),
+    Json = {struct,
+	    [{down, stats_to_json(Down)},
+	     {up, stats_to_json(Up)}
+	    ]},
+    Req:ok({?MIME_JSON, mochijson:encode(Json)});
 
 request(Req, 'GET', {download, Name}) ->
     case torrent:get_torrent_binary(Name) of
@@ -620,3 +653,6 @@ generate_pages(Total) ->
 		    end, {1, []}, lists:seq(0, Total, ?RESULTSET_LENGTH)),
     lists:reverse(Result).
 
+stats_to_json(Stats) ->
+    {array,
+     [{array, [Timestamp * 1000, Value]} || {Timestamp, Value} <- Stats]}.

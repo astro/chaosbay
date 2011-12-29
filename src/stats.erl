@@ -13,7 +13,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, inc_bytes/2, update_peers/4]).
+-export([start_link/0, inc_bytes/2, update_peers/4, get_bytes_stats/0, get_peers_stats/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -33,6 +33,21 @@ inc_bytes(DownDelta, UpDelta) ->
 update_peers(Seeders4, Leechers4, Seeders6, Leechers6) ->
     gen_server:cast(?SERVER, {update_peers, Seeders4, Leechers4, Seeders6, Leechers6}).
 
+get_bytes_stats() ->
+    C = sql_conns:request_connection(),
+    {ok, _, Downs} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='down' ORDER BY timestamp ASC", []),
+    {ok, _, Ups} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='up' ORDER BY timestamp ASC", []),
+    sql_conns:release_connection(C),
+    {Downs, Ups}.
+
+get_peers_stats() ->
+    C = sql_conns:request_connection(),
+    {ok, _, Leechers4} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='leechers4' ORDER BY timestamp ASC", []),
+    {ok, _, Seeders4} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='seeders4' ORDER BY timestamp ASC", []),
+    {ok, _, Leechers6} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='leechers6' ORDER BY timestamp ASC", []),
+    {ok, _, Seeders6} = pgsql:equery(C, "SELECT timestamp, value FROM stats WHERE type='seeders6' ORDER BY timestamp ASC", []),
+    sql_conns:release_connection(C),
+    {Leechers4, Seeders4, Leechers6, Seeders6}.
 
 %%--------------------------------------------------------------------
 %% @doc

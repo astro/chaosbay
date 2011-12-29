@@ -189,3 +189,12 @@ p#foot {
 p#foot:first-line {
     font-weight: bold;
 }
+
+#stats > *, #stats h2 {
+    margin: 0 auto;
+    text-align: center;
+}
+#bytes, #peers {
+    width: 700px;
+    height: 300px;
+}
