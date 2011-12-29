@@ -49,7 +49,8 @@ function loadBytes(cb) {
 			 timeformat: "%H:%M"
 		       },
 		width: 800,
-		height: 300
+		height: 300,
+		legend: { position: 'ne' }
             });
 	    cb();
 	 },
@@ -83,7 +84,8 @@ function loadPeers(cb) {
 			 timeformat: "%H:%M"
 		       },
 		width: 800,
-		height: 300
+		height: 300,
+		legend: { position: 'ne' }
             });
 	     if (cb)
 		 cb();
