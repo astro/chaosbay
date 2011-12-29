@@ -559,6 +559,7 @@ html_skeleton(Body) ->
       <ul>
         <li><a href='/add' id='add'>Add</a></li>
         <li><a href='/atom' id='atom'>Feed</a></li>
+        <li><a href='/stats.html' id='stats'>Stats</a></li>
         <li><form id='search' method='get' action='/search'>
                <input type='text' name='q' id='q'
                       title='All space-seperated words will be AND-matched.' length='30'

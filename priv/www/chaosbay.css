@@ -11,8 +11,8 @@ a {
 div#head {
     background: black;
     color: white;
-    padding: 0.2em 2em;
-    min-height: 4.5em;
+    padding: 0.2em 0.4em;
+    min-height: 6em;
 }
 div#head ul {
     margin: 0;
