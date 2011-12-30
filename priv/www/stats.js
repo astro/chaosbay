@@ -23,6 +23,7 @@ function applyTZOffset(values) {
 }
 
 function loadBytes(cb) {
+    $("#bytes").html("<img src='/static/spinner.gif'/>");
     $.ajax({ url: "/stats/bytes.json",
 	 dataType: 'json',
 	 success: function(data) {
@@ -58,6 +59,7 @@ function loadBytes(cb) {
        });
 }
 function loadPeers(cb) {
+    $("#peers").html("<img src='/static/spinner.gif'/>");
     $.ajax({ url: "/stats/peers.json",
 	 dataType: 'json',
 	 success: function(data) {
