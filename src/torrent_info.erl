@@ -55,12 +55,21 @@ get_files(Torrent) ->
 		       []]).
 
 set_tracker(Torrent1) ->
+    OldTrackers1 = case lists:keyfind(<<"announce">>, 1, Torrent1) of
+	{<<"announce">>, Url} -> [[Url]];
+        _ -> []
+    end,
+    OldTrackers2 = case lists:keyfind(<<"announce-list">>, 1, Torrent1) of
+	{<<"announce-list">>, Urls} -> Urls;
+	_ -> []
+    end,
     Torrent2 = lists:keystore(<<"announce">>, 1, Torrent1,
 			      {<<"announce">>, ?TRACKER_URL}),
     Torrent3 = lists:keystore(<<"announce-list">>, 1, Torrent2,
 			      {<<"announce-list">>,
 			       lists:map(fun(List) ->
 						 lists:map(fun list_to_binary/1, List)
-					 end, ?TRACKER_URLS)
+					 end, ?TRACKER_URLS) ++
+				OldTrackers1 ++ OldTrackers2
 			      }),
     Torrent3.
