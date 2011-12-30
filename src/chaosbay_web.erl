@@ -24,6 +24,17 @@
 -define(MIME_JSON, "application/json").
 -define(MIME_JAVASCRIPT, "text/javascript").
 
+pick_slogan() ->
+    Slogans = [<<"The revolution will be shared.">>,
+	       <<"Pirates, arrr!">>,
+	       <<"The smart way to share">>,
+	       <<"Way better than an FTP server">>,
+	       <<"Launch your BitTorrent client!">>,
+	       <<"Use more bandwidth">>,
+	       <<"Download from ALL the peers!">>
+	      ],
+    lists:nth(random:uniform(length(Slogans)), Slogans).
+
 %% External API
 
 start(Options) ->
@@ -567,6 +578,7 @@ html_skeleton(Body) ->
             </form></li>
       </ul>
       <h1><a href='/'>Chaos Bay</a></h1>
+      <p id='slogan'>">>, pick_slogan(), <<"</p>
     </div>
     <div id='content'>
 ">>, Body, <<"

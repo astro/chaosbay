@@ -48,7 +48,14 @@ div#head ul li form input {
 div#head h1 {
     font-size: 250%;
     font-weight: bold;
-    margin-right: 5em;
+    margin-right: 0.2em;
+    float: left;
+}
+div#head #slogan {
+    font-size: 50%;
+    font-style: italic;
+    margin-top: 4.7em;
+    text-align: left;
 }
 div#head h1 a {
     color: white;
