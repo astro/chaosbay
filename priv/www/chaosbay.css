@@ -44,6 +44,8 @@ div#head ul li form input {
     padding: 2px;
     margin: 0;
     padding-left: 20px;
+    border-radius: 1.5px;
+    border: 0;
 }
 div#head h1 {
     font-size: 250%;
