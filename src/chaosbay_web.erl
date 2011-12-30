@@ -253,7 +253,7 @@ request(Req, 'GET', "atom") ->
 					   id = Id,
 					   date = Date,
 					   length = Length}) ->
-				 {ok, Binary} = torrent:get_torrent_binary(Name),
+				 %{ok, Binary} = torrent:get_torrent_binary(Name),
 				 {S, L, Speed} = tracker:tracker_info(Id),
 				 LinkDetails = chaosbay:absolute_path(link_to_details(Name)),
 				 LinkTorrent = chaosbay:absolute_path(link_to_torrent(Name)),
@@ -268,7 +268,7 @@ request(Req, 'GET', "atom") ->
 						  {"href", [LinkDetails]}], []},
 					  {link, [{"rel", "enclosure"},
 						  {"type", ?MIME_BITTORRENT},
-						  {"length", size(Binary)},
+						  {"length", Length},
 						  {"href", LinkTorrent}], []},
 					  {summary, [{"type", "xhtml"}],
 					   [{'div', [{"xmlns", "http://www.w3.org/1999/xhtml"}],
