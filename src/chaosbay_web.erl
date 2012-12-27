@@ -31,7 +31,8 @@ pick_slogan() ->
 	       <<"Way better than an FTP server">>,
 	       <<"Launch your BitTorrent client!">>,
 	       <<"Use more bandwidth">>,
-	       <<"Download from ALL the peers!">>
+	       <<"Download from ALL the peers!">>,
+	       <<"The hottest new shit since 25c3">>
 	      ],
     lists:nth(random:uniform(length(Slogans)), Slogans).
 
@@ -252,7 +253,7 @@ request(Req, 'GET', "atom") ->
     ?COUNT_REQUEST(atom),
     TorrentMetas = torrent:recent(50),
     Atom = {feed, [{"xmlns", "http://www.w3.org/2005/Atom"}],
-	    [{title, [<<"Chaos Bay">>]},
+	    [{title, [<<"D3p4rtm3nt Store">>]},
 	     {id, [chaosbay:absolute_path("/")]},
 	     {link, [{"rel", "self"},
 		     {"type", ?MIME_ATOM},
@@ -559,7 +560,7 @@ html_skeleton(Body) ->
 <html xmlns='http://www.w3.org/1999/xhtml' lang='de' xml:lang='de'>
   <head>
     <meta http-equiv='Content-Type' content='">>, ?MIME_XHTML, <<"; charset=UTF-8' />
-    <title>Chaos Bay</title>
+    <title>D3p4rtm3nt Store</title>
     <link rel='stylesheet' type='text/css' href='/static/chaosbay.css'/>
     <script type='text/javascript' src='/static/jquery-1.2.6.min.js'></script>
     <script type='text/javascript' src='/static/comments.js'></script>
@@ -570,14 +571,14 @@ html_skeleton(Body) ->
       <ul>
         <li><a href='/add' id='add'>Add</a></li>
         <li><a href='/atom' id='atom'>Feed</a></li>
-        <li><a href='/stats.html' id='stats'>Stats</a></li>
-        <li><form id='search' method='get' action='/search'>
+        <!--li><a href='/stats.html' id='stats'>Stats</a></li-->
+        <li><form id='search' type='search' method='get' action='/search'>
                <input type='text' name='q' id='q'
                       title='All space-seperated words will be AND-matched.' length='30'
                       value=''/>
             </form></li>
       </ul>
-      <h1><a href='/'>Chaos Bay</a></h1>
+      <h1><a href='/'>D3p4rtm3nt Store</a></h1>
       <p id='slogan'>">>, pick_slogan(), <<"</p>
     </div>
     <div id='content'>
@@ -586,17 +587,7 @@ html_skeleton(Body) ->
     <p id='foot'>
 — Powered by Erlang &amp; Mochiweb &amp; PostgreSQL —
 <br/>
-Running on ">>,
-	     case nodes(visible) of
-		 [] ->
-		     [];
-		 VisibleNodes ->
-		     [string:join([atom_to_list(Node)
-				   || Node <- VisibleNodes], ", "),
-		      <<" and ">>]
-	     end,
-	     atom_to_list(node()),
-	     <<"
+Running on a PPC
     </p>
   </body>
 </html>">>].

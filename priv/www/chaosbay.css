@@ -9,10 +9,10 @@ a {
     color: #7f0000;
 }
 div#head {
-    background: black;
+    background: #000532;
     color: white;
     padding: 0.2em 0.4em;
-    min-height: 6em;
+    min-height: 5em;
 }
 div#head ul {
     margin: 0;
@@ -56,7 +56,7 @@ div#head h1 {
 div#head #slogan {
     font-size: 50%;
     font-style: italic;
-    margin-top: 4.7em;
+    margin-top: 3.6em;
     text-align: left;
 }
 div#head h1 a {
