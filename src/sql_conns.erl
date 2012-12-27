@@ -93,7 +93,7 @@ init([]) ->
 handle_call(request_connection, _From, State) ->
   case State#state.connections of
 	[] -> 
-		{ok, C} = pgsql:connect("localhost", "klobs", "chaosbay", [{database, "chaosbaydb"}, {port, 5432}]),
+		{ok, C} = pgsql:connect("localhost", "chaosbay", "chaosbay", [{database, "chaosbaydb"}]),
 		NState = State,
 		C;
 	[C|H] ->
