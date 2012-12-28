@@ -13,7 +13,7 @@
 %% @spec start(_Type, _StartArgs) -> ServerRet
 %% @doc application start callback for chaosbay.
 start(_Type, _StartArgs) ->
-    %application:start(collectd),
+    application:start(collectd),
     chaosbay_deps:ensure(),
     chaosbay_sup:start_link().
 

@@ -71,7 +71,7 @@ loop(Req) ->
 	       end,
     T2 = util:mk_timestamp_us(),
     io:format("~s [~Bus] ~s ~s~n", [Req:get(peer), T2 - T1, Method, Path]),
-    %collectd:set_gauge(delay, http_request, [(T2 - T1) / 1000000]),
+    collectd:set_gauge(delay, http_request, [(T2 - T1) / 1000000]),
     Response.
 
 

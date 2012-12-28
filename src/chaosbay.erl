@@ -20,8 +20,8 @@ ensure_started(App) ->
 start() ->
     chaosbay_deps:ensure(),
     ensure_started(crypto),
-    %ensure_started(collectd),
-    %setup_collectd(),
+    ensure_started(collectd),
+    setup_collectd(),
     application:start(chaosbay).
 
 %% @spec stop() -> ok
@@ -48,6 +48,6 @@ setup_collectd() ->
 	       end,
     case application:get_env(chaosbay, collectd_server) of
 	{ok, Server} -> collectd:add_server(Interval, Server);
-	undefined -> collectd:add_server(Interval)
+	undefined -> ignore
     end.
 

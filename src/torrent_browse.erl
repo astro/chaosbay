@@ -37,7 +37,7 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 			{_, _, MatchingTorrents} = pgsql:equery(C, SQLStatement, [Now, SQLSearchPattern, Max, Offset]),
 			TotalCountStatement = "select (count(*)) from torrents where name ilike $1",
 			{_, _, [{TotalMatchingTorrents}]} = pgsql:equery(C, TotalCountStatement, [SQLSearchPattern]);
-			%collectd:set_gauge(delay, torrent_search, [(util:mk_timestamp_us() - StartSearch) / 1000000]);
+			collectd:set_gauge(delay, torrent_search, [(util:mk_timestamp_us() - StartSearch) / 1000000]);
 		_ ->
 			StartSearch = util:mk_timestamp_us(),
 			SQLStatement = "select (name, infohash, length, count_comments(name), " ++
@@ -47,7 +47,7 @@ search(Pattern, Max, Offset, SortField, SortDir) ->
 			{_, _, MatchingTorrents} = pgsql:equery(C, SQLStatement, [Now, Max, Offset]),
 			TotalCountStatement = "select (count(*)) from torrents",
 			{_, _, [{TotalMatchingTorrents}]} = pgsql:equery(C, TotalCountStatement)
-			%collectd:set_gauge(delay, torrent_search, [(util:mk_timestamp_us() - StartSearch) / 1000000])
+			collectd:set_gauge(delay, torrent_search, [(util:mk_timestamp_us() - StartSearch) / 1000000])
 	end,
 	sql_conns:release_connection(C),
 	Result = lists:flatmap(fun(X) -> 
