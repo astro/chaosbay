@@ -132,10 +132,17 @@ get_torrent_binary(Name) ->
 	Result.
 
 
+-define(BATCH_SIZE, 5).
+
 refresh_all_torrents() ->
+    refresh_all_torrents(0).
+
+refresh_all_torrents(Offset) ->
+    io:format("refresh_all_torrents ~B...~n", [Offset]),
     C = sql_conns:request_connection(),
-    {ok, _, Rows} = pgsql:equery(C, "select infohash, data from torrents", []),
+    {ok, _, Rows} = pgsql:equery(C, "select infohash, data from torrents order by infohash limit $1 offset $2", [?BATCH_SIZE, Offset]),
     L = length(Rows),
+    N =
     lists:foldl(fun({InfoHash, Data}, N) ->
 			io:format("~B%~n", [trunc(100 * N / L)]),
     			Torrent1 = benc:parse(Data),
@@ -144,4 +151,11 @@ refresh_all_torrents() ->
 			pgsql:equery(C, "update torrents set data=$1 where infohash=$2", [Binary, InfoHash]),
 			N + 1
 		end, 0, Rows),
-    sql_conns:release_connection(C).
+    sql_conns:release_connection(C),
+    if
+	N > 0 ->
+	    refresh_all_torrents(Offset + ?BATCH_SIZE);
+	true ->
+	    done
+    end.
+    
