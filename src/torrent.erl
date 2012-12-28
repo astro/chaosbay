@@ -5,7 +5,8 @@
 	 recent/1,
 	 get_torrent_meta_by_name/1,
 	 get_torrent_meta_by_id/1, torrent_name_by_id_t/1,
-	 get_torrent_binary/1]).
+	 get_torrent_binary/1,
+	 refresh_all_torrents/0]).
 
 -include("../include/torrent.hrl").
 
@@ -129,3 +130,18 @@ get_torrent_binary(Name) ->
 	end,
 	sql_conns:release_connection(C),
 	Result.
+
+
+refresh_all_torrents() ->
+    C = sql_conns:request_connection(),
+    {ok, _, Rows} = pgsql:equery(C, "select infohash, data from torrents", []),
+    L = length(Rows),
+    lists:foldl(fun({InfoHash, Data}, N) ->
+			io:format("~B%~n", [trunc(100 * N / L)]),
+    			Torrent1 = benc:parse(Data),
+			Torrent2 = torrent_info:set_tracker(Torrent1),
+			Binary = benc:to_binary(Torrent2),
+			pgsql:equery(C, "update torrents set data=$1 where infohash=$2", [Binary, InfoHash]),
+			N + 1
+		end, 0, Rows),
+    sql_conns:release_connection(C).
