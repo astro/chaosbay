@@ -32,6 +32,7 @@
 -define(DB_DEFAULT_NAME, "chaosbaydb").
 -define(DB_DEFAULT_USER, "chaosbay").
 -define(DB_DEFAULT_PASS, "chaosbay").
+-define(TIMEOUT, (120 * 1000)).
 
 %%====================================================================
 %% API
@@ -41,10 +42,10 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 request_connection() ->
-  gen_server:call(?SERVER, request_connection).
+  gen_server:call(?SERVER, request_connection, ?TIMEOUT).
 
 release_connection(C) ->
-  gen_server:call(?SERVER, {release_connection, C}).
+  gen_server:call(?SERVER, {release_connection, C}, ?TIMEOUT).
 
 %%--------------------------------------------------------------------
 %% Function: init(Args) -> {ok, State} |
@@ -93,7 +94,10 @@ init([]) ->
 handle_call(request_connection, _From, State) ->
   case State#state.connections of
 	[] -> 
-		{ok, C} = pgsql:connect("localhost", "chaosbay", "chaosbay", [{database, "chaosbaydb"}]),
+		{ok, C} = pgsql:connect("localhost", "chaosbay", "chaosbay",
+					[{database, "chaosbaydb"},
+					 {timeout, ?TIMEOUT}
+					]),
 		NState = State,
 		C;
 	[C|H] ->
