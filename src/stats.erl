@@ -44,9 +44,9 @@ get_bytes_stats() ->
 get_peers_stats() ->
     Leechers4 = query_stats("leechers4"),
     Seeders4 = query_stats("seeders4"),
-    Leechers6 = query_stats("leechers6"),
-    Seeders6 = query_stats("seeders6"),
-    {Leechers4, Seeders4, Leechers6, Seeders6}.
+    %% Leechers6 = query_stats("leechers6"),
+    %% Seeders6 = query_stats("seeders6"),
+    {Leechers4, Seeders4, 0, 0}.
 
 %%--------------------------------------------------------------------
 %% @doc

@@ -461,12 +461,10 @@ request(Req, 'GET', "stats.html") ->
     html_ok(Req, lists:map(fun html:to_iolist/1, HTML));
 
 request(Req, 'GET', "stats/peers.json") ->
-    {Leechers4, Seeders4, Leechers6, Seeders6} = stats:get_peers_stats(),
+    {Leechers4, Seeders4, _Leechers6, _Seeders6} = stats:get_peers_stats(),
     Json = {struct,
 	    [{leechers4, stats_to_json(Leechers4)},
-	     {seeders4, stats_to_json(Seeders4)},
-	     {leechers6, stats_to_json(Leechers6)},
-	     {seeders6, stats_to_json(Seeders6)}
+	     {seeders4, stats_to_json(Seeders4)}
 	    ]},
     Req:ok({?MIME_JSON, mochijson:encode(Json)});
 
@@ -571,7 +569,7 @@ html_skeleton(Body) ->
       <ul>
         <li><a href='/add' id='add'>Add</a></li>
         <li><a href='/atom' id='atom'>Feed</a></li>
-        <!--li><a href='/stats.html' id='stats'>Stats</a></li-->
+        <li><a href='/stats.html' id='stats'>Stats</a></li>
         <li><form id='search' type='search' method='get' action='/search'>
                <input type='text' name='q' id='q'
                       title='All space-seperated words will be AND-matched.' length='30'

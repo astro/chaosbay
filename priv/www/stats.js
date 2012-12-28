@@ -65,21 +65,13 @@ function loadPeers(cb) {
 	 success: function(data) {
 	     $("#peers").before("<h2>Tracked Peers</h2>");
 	     $.plot($("#peers"), [{
-		 label: "Leechers (IPv4)",
+		 label: "Leechers",
 	         data: data.leechers4.map(applyTZOffset),
 		 color: '#cf0000'
 	     }, {
-		 label: "Seeders (IPv4)",
+		 label: "Seeders",
 	         data: data.seeders4.map(applyTZOffset),
 		 color: '#007f00'
-	     }, {
-		 label: "Leechers (IPv6)",
-	         data: data.leechers6.map(applyTZOffset),
-		 color: '#ff6f3f'
-	     }, {
-		 label: "Seeders (IPv6)",
-	         data: data.seeders6.map(applyTZOffset),
-		 color: '#3fff3f'
 	     }], {
                 yaxis: { min: 0 },
                 xaxis: { mode: 'time',
