@@ -11,7 +11,7 @@
 -include("../include/torrent.hrl").
 -include("../include/comment.hrl").
 
--define(TRACKER_REQUEST_INTERVAL, 60).
+-define(TRACKER_REQUEST_INTERVAL, 600).
 -define(TRACKER_REQUEST_INTERVAL_JITTER, 0.4).
 -define(TRACKER_REQUEST_INTERVAL_JITTERED,
 	?TRACKER_REQUEST_INTERVAL +
