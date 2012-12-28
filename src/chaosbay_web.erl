@@ -461,10 +461,12 @@ request(Req, 'GET', "stats.html") ->
     html_ok(Req, lists:map(fun html:to_iolist/1, HTML));
 
 request(Req, 'GET', "stats/peers.json") ->
-    {Leechers4, Seeders4, _Leechers6, _Seeders6} = stats:get_peers_stats(),
+    {Leechers4, Seeders4, Leechers6, Seeders6} = stats:get_peers_stats(),
     Json = {struct,
 	    [{leechers4, stats_to_json(Leechers4)},
-	     {seeders4, stats_to_json(Seeders4)}
+	     {seeders4, stats_to_json(Seeders4)},
+	     {leechers6, stats_to_json(Leechers6)},
+	     {seeders6, stats_to_json(Seeders6)}
 	    ]},
     Req:ok({?MIME_JSON, mochijson:encode(Json)});
 
