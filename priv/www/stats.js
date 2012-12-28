@@ -75,11 +75,11 @@ function loadPeers(cb) {
 	     }, {
 		 label: "Leechers (IPv6)",
 	         data: data.leechers6.map(applyTZOffset),
-		 color: '#cf0000'
+		 color: '#ff6f3f0'
 	     }, {
 		 label: "Seeders (IPv6)",
 	         data: data.seeders6.map(applyTZOffset),
-		 color: '#007f00'
+		 color: '#3fff3f'
 	     }], {
                 yaxis: { min: 0 },
                 xaxis: { mode: 'time',
