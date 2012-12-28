@@ -568,13 +568,12 @@ html_skeleton(Body) ->
     <div id='head'>
       <ul>
         <li><a href='/add' id='add'>Add</a></li>
-        <li><a href='/atom' id='atom'>Feed</a></li>
-        <li><a href='/stats.html' id='stats'>Stats</a></li>
         <li><form id='search' type='search' method='get' action='/search'>
                <input type='text' name='q' id='q'
                       title='All space-seperated words will be AND-matched.' length='30'
                       value=''/>
             </form></li>
+        <li><a href='/atom' id='atom'>Feed</a> • <a href='/stats.html' id='stats'>Stats</a></li>
       </ul>
       <h1><a href='/'>D3p4rtm3nt Store</a></h1>
       <p id='slogan'>">>, pick_slogan(), <<"</p>

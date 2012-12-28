@@ -12,7 +12,7 @@ div#head {
     background: #000532;
     color: white;
     padding: 0.2em 0.4em;
-    min-height: 5em;
+    min-height: 4.5em;
 }
 div#head ul {
     margin: 0;
@@ -20,7 +20,7 @@ div#head ul {
     float: right;
     text-align: right;
     list-style-type: none;
-    line-height: 1.2em;
+    line-height: 1.3em;
 }
 div#head ul li a#add:before {
     content: url(/static/add.png);
@@ -42,15 +42,18 @@ div#head ul li form input {
     background-repeat: no-repeat;
     background-position: 2px center;
     padding: 2px;
-    margin: 0;
+    margin: 0 0 4px;
     padding-left: 20px;
     border-radius: 1.5px;
     border: 0;
 }
 div#head h1 {
+    background: #000532;
+    color: white;
     font-size: 250%;
     font-weight: bold;
-    margin-right: 0.2em;
+    margin: 0em;
+    padding: 0.4em 0 0;
     float: left;
 }
 div#head #slogan {
